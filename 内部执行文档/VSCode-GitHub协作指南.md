@@ -54,15 +54,21 @@ master 分支 ← （只放稳定通过的代码）
    ```
    fix: 修复预警重复触发的问题
    ```
-5. 点击 `✓ Commit` 按钮
-6. 点击左下角 **同步更改** 按钮（或 `...` → `Push`），推送到 GitHub
+5. 点击 `✓ 提交` 按钮
+
+在源代码管理面板（Ctrl+Shift+G）中：
+
+1. 点击面板右上角的“...”图标（更多操作）
+2. 从弹出的菜单中选择“推送” 
+   (有时显示为“Push”)
+3. 等待右下角提示“推送完成”
 
 ### 3.3 发起 Pull Request（合并到 master 分支）
 
 当你完成一个功能模块，需要合并到 master 让其他人能用时：
 
 1. 左侧点击 **GitHub 图标**
-2. 在 "Pull Requests" 区域，鼠标悬停 → 点击 `+` 号（Create Pull Request）
+2. 在 "Pull Requests" 区域，鼠标悬停 → 点击一个 带`+` 号的符号
 3. 设置：
    - **Base**: `master`（合并到哪个分支）
    - **Compare**: 你的分支（从哪个分支合并）
@@ -75,21 +81,11 @@ master 分支 ← （只放稳定通过的代码）
 
 ---
 
-## 四、分工分支与文件责任表
 
-| 组员 | 分支名（建议） | 负责目录 | 不可修改的目录 |
-|---|---|---|---|
-| **A** | `feat/gui/A-xxx` | `gui/` | `models/`, `strategies/`, `rules/`, `methods/`, `services/` |
-| **B** | `feat/integration/B-xxx` | `services/csv_importer.py`, `services/category_normalizer.py`, `master_cli.py` | `strategies/`, `rules/`, `methods/`, `gui/` |
-| **C** | `feat/models/C-xxx` | `models/transaction.py`, `models/budget.py`, `models/suggestion.py`, `services/finance_controller.py` | `strategies/`, `rules/`, `methods/`, `gui/` |
-| **D** | `feat/diagnosis/D-xxx` | `models/diagnosis_report.py`, `strategies/` | `rules/`, `methods/`, `gui/` |
-| **E** | `feat/budget/E-xxx` | `models/monthly_plan.py`, `models/savings_plan.py`, `services/saving_calculator.py`, `rules/`, `methods/` | `strategies/`, `gui/` |
-
-> **红线规则**：不要修改不是你负责的目录下的文件。如果确实需要修改他人的文件（如接口签名调整），在 PR 描述中 @对方 来 Review。
-
+> 不要修改不是你负责的目录下的文件。
 ---
 
-## 五、处理冲突（Merge Conflict）
+## 五、处理冲突（后面都没有看过）
 
 当你合并 master 到自己分支时，如果和你自己的修改冲突了：
 
@@ -138,31 +134,6 @@ master 分支 ← （只放稳定通过的代码）
 **解决**：检查左下角是否有 "Synchronize Changes" 按钮。点击它。
 
 ---
-
-## 七、终端速查（可选，GUI 够用的话不需要）
-
-| 操作 | 终端命令 |
-|---|---|
-| 克隆仓库 | `git clone https://github.com/xxx/oop2-finance-tracker.git` |
-| 查看分支 | `git branch -a` |
-| 切换分支 | `git checkout 分支名` |
-| 拉取最新 | `git pull origin master` |
-| 暂存所有修改 | `git add .` |
-| 提交 | `git commit -m "feat: 描述"` |
-| 推送 | `git push` |
-| 合并 master 到当前分支 | `git merge origin/master` |
-| 放弃本地修改 | `git checkout -- 文件名` |
-
----
-
-## 八、每日检查清单
-
-每个组员每天结束时：
-
-- [ ] 今天的代码已经 Commit + Push 到自己的分支了吗？
-- [ ] 有没有不小心提交了 `__pycache__/` 或 `.vscode/`？（.gitignore 已配置，一般不会）
-- [ ] 有没有修改了不属于自己负责的目录下的文件？（检查 Changes 列表）
-- [ ] 如果有完成的模块，发起 PR 了吗？通知 Review 了吗？
 
 
 ## deepseek对话
