@@ -19,8 +19,9 @@ my_venv/
 .DS_Store
 Thumbs.db
 
-# Data (CSV files with personal finance data)
-data/*.csv
 
 # Environment
 .env
+
+# Claude
+CLAUDE.md
