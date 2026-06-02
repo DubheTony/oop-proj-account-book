@@ -1,0 +1,13 @@
+name: Auto Approve PR
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Auto approve PR
+        uses: hmarr/auto-approve-action@v3
