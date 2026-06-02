@@ -8,12 +8,18 @@ class Rule503020(BudgetRule):
 
     def __init__(self, sub_necessities: list[str] = None, sub_wants: list[str] = None):
         """
-        sub_necessities: 必要支出子类别，默认 ["餐饮", "交通", "日用"]
-        sub_wants: 想要支出子类别，默认 ["娱乐", "其他"]
+        sub_necessities: 必要支出子类别，默认覆盖基本生活类
+        sub_wants: 想要支出子类别，默认覆盖弹性消费类
         储蓄不映射到支出类别，仅作目标标记
         """
-        self.necessities_cats = sub_necessities or ["餐饮", "交通", "日用"]
-        self.wants_cats = sub_wants or ["娱乐", "其他"]
+        self.necessities_cats = sub_necessities or [
+            "餐饮", "餐饮食品", "交通", "家居日用",
+            "个人护理", "医疗健康", "学习"
+        ]
+        self.wants_cats = sub_wants or [
+            "娱乐", "娱乐玩具", "数码电子", "运动户外",
+            "服饰配饰", "其他"
+        ]
 
     def allocate(self, income: float, history: list[Transaction]) -> dict[str, float]:
         budget: dict[str, float] = {}

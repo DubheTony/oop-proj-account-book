@@ -11,8 +11,15 @@ class SavingGoalCalculator:
 
     def __init__(self):
         self._cut_ratios: dict[str, float] = {
-            "餐饮": 0.40,
-            "娱乐": 0.60,
+            "餐饮": 0.25,
+            "餐饮食品": 0.15,
+            "娱乐": 0.20,
+            "娱乐玩具": 0.10,
+            "数码电子": 0.10,
+            "运动户外": 0.05,
+            "服饰配饰": 0.05,
+            "家居日用": 0.05,
+            "其他": 0.05,
         }
 
     def set_cut_ratio(self, category: str, ratio: float):

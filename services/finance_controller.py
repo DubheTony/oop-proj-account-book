@@ -6,6 +6,7 @@
 #   - generate_diagnosis() 默认使用最新月份的数据
 from models.transaction import Transaction
 from models.budget import Budget
+from services.category_normalizer import LEGACY_CATEGORY_MAP
 
 
 class FinanceController:
@@ -87,12 +88,13 @@ class FinanceController:
     def recalculate_budget_spent(self, month: str | None = None) -> None:
         """根据当前交易重新计算每个预算的已支出金额。
         month为None时使用全部交易，否则仅用指定月份。
+        支持旧类别名自动匹配（如"日用"→"家居日用"）。
         """
         txns = self.get_transactions(month)
         for b in self._budgets:
             b.current_spent = sum(
                 t.amount for t in txns
-                if t.is_expense() and t.category == b.category
+                if t.is_expense() and self._category_matches(t.category, b.category)
             )
 
     def check_budget_alerts(self) -> None:
@@ -154,11 +156,11 @@ class FinanceController:
 
         txns = self.get_transactions(month)
 
-        # 根据该月交易重算每个预算的 current_spent
+        # 根据该月交易重算每个预算的 current_spent（支持旧类别名）
         for b in self._budgets:
             b.current_spent = sum(
                 t.amount for t in txns
-                if t.is_expense() and t.category == b.category
+                if t.is_expense() and self._category_matches(t.category, b.category)
             )
 
         report = self.diagnosis_strategy.diagnose(txns, self._budgets)
@@ -224,7 +226,19 @@ class FinanceController:
     # ================================================================
 
     def _find_budget(self, category: str) -> Budget | None:
+        """查找类别对应的预算。支持旧类别名自动映射。"""
         for b in self._budgets:
-            if b.category == category:
+            if self._category_matches(category, b.category):
                 return b
         return None
+
+    @staticmethod
+    def _category_matches(txn_category: str, budget_category: str) -> bool:
+        """判断交易类别是否匹配预算类别（含向后兼容）。
+        例如：交易"日用"可匹配预算"家居日用"。
+        """
+        if txn_category == budget_category:
+            return True
+        # 旧类别名 → 新类别名
+        mapped = LEGACY_CATEGORY_MAP.get(txn_category, txn_category)
+        return mapped == budget_category

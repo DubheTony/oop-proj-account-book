@@ -1,6 +1,7 @@
 # category_normalizer — 类别标准化
 # 输入：CSV中的原始类别名/商户名/商品描述
-# 输出：6个标准类别之一（餐饮/交通/娱乐/学习/日用/其他）
+# 输出：标准类别（13个：餐饮/餐饮食品/交通/学习/数码电子/个人护理/
+#       家居日用/运动户外/服饰配饰/医疗健康/娱乐/娱乐玩具/其他）
 # 映射规则存储在 category_rules.json，方便组员协作扩充
 import json
 from pathlib import Path
@@ -26,6 +27,25 @@ WECHAT_KEYWORD_RULES: list[tuple[list[str], list[str], str]] = [
     for r in _rules["wechat_keyword_rules"]["规则列表"]
 ]
 
+# ============================================================
+# 从规则文件中提取所有有效标准类别（供其他模块引用）
+# ============================================================
+STANDARD_CATEGORIES: list[str] = sorted(set(
+    v for k, v in SIMPLE_CATEGORY_MAP.items()
+    if not k.startswith("_")
+))
+
+# 向后兼容：旧类别名 → 新类别名（用于已有交易记录的平滑迁移）
+LEGACY_CATEGORY_MAP: dict[str, str] = {
+    "日用": "家居日用",     # 旧"日用"映射到"家居日用"
+}
+
+
+# ============================================================
+# Pinduoduo store direct mapping
+# ============================================================
+PINDUODUO_STORE_MAP: dict[str, str] = _rules.get("pinduoduo_store_rules", {}).get("店铺映射", {})
+
 
 # ============================================================
 # 对外函数
@@ -46,20 +66,31 @@ def normalize_simple(raw: str) -> str:
 
 
 def infer_category_wechat(merchant: str, product: str) -> str:
-    """微信专用：根据商户名和商品描述推断类别"""
+    """微信专用：根据商户名和商品描述推断类别。支持拼多多商户直查。"""
     m = merchant.strip()
     p = product.strip()
 
+    # 0. 先查拼多多商户直查表（精确商户名匹配）
+    if m in PINDUODUO_STORE_MAP:
+        return PINDUODUO_STORE_MAP[m]
+
+    # 1. 关键词规则匹配
     for merchants, products, category in WECHAT_KEYWORD_RULES:
-        # 检查商户名是否含任一关键词
         if any(kw in m for kw in merchants):
             return category
-        # 检查商品描述是否含任一关键词
         if any(kw in p for kw in products):
             return category
 
-    # 全部未匹配 → 其他
+    # 2. 全部未匹配 → 其他
     return "其他"
+
+
+def normalize_category_legacy(raw: str) -> str:
+    """带向后兼容的类别标准化。如果匹配到旧类别名，自动转为新类别名。"""
+    cleaned = raw.strip()
+    result = SIMPLE_CATEGORY_MAP.get(cleaned, cleaned)
+    # 如果是旧类别名，映射到新类别名
+    return LEGACY_CATEGORY_MAP.get(result, result)
 
 
 # 兼容旧接口

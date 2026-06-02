@@ -55,15 +55,20 @@ class ConsumptionStructureStrategy(DiagnosticStrategy):
 
         for t in expenses:
             note = t.note if t.note else ""
-            if t.category == "餐饮":
+            # 餐饮 + 餐饮食品 = 总饮食支出
+            if t.category in ("餐饮", "餐饮食品"):
                 if "食堂" in note or "食材" in note or "超市" in note:
                     basic_food += t.amount
                 elif "外卖" in note or "聚餐" in note:
                     social_food += t.amount
                 else:
-                    # 无法区分 → 归入社交饮食（外食为主）
-                    social_food += t.amount
-            elif t.category == "娱乐":
+                    # 包装食品/饮料/零食 → 归入基础饮食
+                    if t.category == "餐饮食品":
+                        basic_food += t.amount
+                    else:
+                        # 无法区分的餐饮 → 归入社交饮食（外食为主）
+                        social_food += t.amount
+            elif t.category in ("娱乐", "娱乐玩具"):
                 entertainment += t.amount
             elif t.category == "学习":
                 study += t.amount
