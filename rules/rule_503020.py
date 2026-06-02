@@ -1,10 +1,13 @@
 # Rule503020 — 50/30/20 预算规则
 from models.transaction import Transaction
 from .budget_rule import BudgetRule
+from services.category_normalizer import CATEGORY_PARENTS
 
 
 class Rule503020(BudgetRule):
-    """50/30/20预算规则。50%必要支出，30%想要支出，20%储蓄。"""
+    """50/30/20预算规则。50%必要支出，30%想要支出，20%储蓄。
+    子类别（如餐饮食品）不独立分配预算，其支出归入父类别（如餐饮）。
+    """
 
     def __init__(self, sub_necessities: list[str] = None, sub_wants: list[str] = None):
         """
@@ -13,11 +16,11 @@ class Rule503020(BudgetRule):
         储蓄不映射到支出类别，仅作目标标记
         """
         self.necessities_cats = sub_necessities or [
-            "餐饮", "餐饮食品", "交通", "家居日用",
+            "餐饮", "交通", "家居日用",
             "个人护理", "医疗健康", "学习"
         ]
         self.wants_cats = sub_wants or [
-            "娱乐", "娱乐玩具", "数码电子", "运动户外",
+            "娱乐", "数码电子", "运动户外",
             "服饰配饰", "其他"
         ]
 
@@ -39,17 +42,28 @@ class Rule503020(BudgetRule):
 
     def _distribute(self, total: float, categories: list[str],
                     history: list[Transaction]) -> dict[str, float]:
-        """按历史各子类支出比例分配总额。无历史数据时均分。"""
+        """按历史各子类支出比例分配总额。排除子类别（归入父类别）。
+        无历史数据时均分。
+        """
+        # 过滤掉子类别（它们不独立分配预算，由父类别覆盖）
+        categories = [c for c in categories if c not in CATEGORY_PARENTS]
+
         if not history or not categories:
-            each = total / len(categories)
+            each = total / max(len(categories), 1)
             return {cat: each for cat in categories}
 
-        # 统计各类别历史支出
+        # 统计各类别历史支出（子类别支出归入父类别）
         cat_totals = {cat: 0.0 for cat in categories}
         all_total = 0.0
         for t in history:
-            if t.is_expense() and t.category in categories:
-                cat_totals[t.category] += t.amount
+            if not t.is_expense():
+                continue
+            matched_cat = t.category
+            # 子类别支出归入父类别
+            if matched_cat in CATEGORY_PARENTS:
+                matched_cat = CATEGORY_PARENTS[matched_cat]
+            if matched_cat in categories:
+                cat_totals[matched_cat] += t.amount
                 all_total += t.amount
 
         if all_total == 0:

@@ -19,28 +19,53 @@ from models.diagnosis_report import HealthLevel
 from services import FinanceController
 from services.category_normalizer import STANDARD_CATEGORIES
 
-# ---------- 全局控制器 + 启动时自动导入CSV ----------
+# ---------- 全局控制器 + 启动时加载持久化数据 ----------
 ctrl = FinanceController()
 
 _script_dir = Path(__file__).parent
-_csv_files = sorted(_script_dir.glob("*.csv"))
-_auto_import_log = []
-for _csv_path in _csv_files:
-    try:
-        _count = ctrl.import_csv(str(_csv_path))
-        _auto_import_log.append(f"{_csv_path.name}: {_count} 条")
-    except Exception as _e:
-        _auto_import_log.append(f"{_csv_path.name}: 失败({_e})")
+_settings_path = _script_dir / "app_settings.json"
+_transactions_path = _script_dir / "transactions.json"
 
-# 初始化诊断策略
+# 加载设置（预算 + 储蓄目标，自动迁移旧 budgets.json）
+_startup_log = []
+try:
+    ctrl.load_settings(str(_settings_path))
+    _startup_log.append("设置已加载")
+except Exception as _e:
+    _startup_log.append(f"设置加载失败({_e})")
+
+# 加载交易记录（优先于 CSV，避免重复解析）
+try:
+    _txn_count = ctrl.load_transactions(str(_transactions_path))
+    if _txn_count > 0:
+        _startup_log.append(f"交易记录: {_txn_count} 条(来自JSON)")
+    else:
+        # 首次使用：尝试从 CSV 导入并自动保存到 JSON
+        _csv_files = sorted(_script_dir.glob("*.csv"))
+        for _csv_path in _csv_files:
+            try:
+                _count = ctrl.import_csv(str(_csv_path))
+                _startup_log.append(f"{_csv_path.name}: {_count} 条")
+            except Exception as _e:
+                _startup_log.append(f"{_csv_path.name}: 失败({_e})")
+        if _csv_files:
+            ctrl.save_transactions(str(_transactions_path))
+except Exception as _e:
+    _startup_log.append(f"交易加载失败({_e})")
+
+# 初始化诊断策略（含储蓄目标达成率）
 from strategies import (
     SavingRateStrategy, CategoryOverrunStrategy,
-    ConsumptionStructureStrategy, CompositeDiagnosis,
+    ConsumptionStructureStrategy, SavingsGoalStrategy, CompositeDiagnosis,
+)
+_savings_goal_strategy = SavingsGoalStrategy(
+    get_target=lambda: ctrl.get_savings_target()
 )
 ctrl.set_diagnosis_strategy(CompositeDiagnosis([
-    (SavingRateStrategy(), 0.4),
-    (CategoryOverrunStrategy(), 0.3),
-    (ConsumptionStructureStrategy(), 0.3),
+    (SavingRateStrategy(), 0.35),
+    (CategoryOverrunStrategy(), 0.25),
+    (ConsumptionStructureStrategy(), 0.2),
+    (_savings_goal_strategy, 0.2),
 ]))
 
 # 规则/方法引用
@@ -163,8 +188,6 @@ class TransactionTab(QWidget):
 
         # 按钮行
         btn_layout = QHBoxLayout()
-        btn_refresh = QPushButton("刷新列表")
-        btn_refresh.clicked.connect(self.refresh)
         btn_add = QPushButton("添加交易")
         btn_add.clicked.connect(self._add)
         btn_import = QPushButton("导入CSV")
@@ -172,7 +195,6 @@ class TransactionTab(QWidget):
         btn_delete = QPushButton("删除选中")
         btn_delete.clicked.connect(self._delete)
 
-        btn_layout.addWidget(btn_refresh)
         btn_layout.addWidget(btn_add)
         btn_layout.addWidget(btn_import)
         btn_layout.addWidget(btn_delete)
@@ -195,6 +217,7 @@ class TransactionTab(QWidget):
         dlg = AddTransactionDialog(self)
         if dlg.exec() == QDialog.Accepted:
             ctrl.add_transaction(dlg.get_transaction())
+            _save_transactions()
             self.refresh()
             self.data_changed.emit()
 
@@ -205,6 +228,8 @@ class TransactionTab(QWidget):
             return
         try:
             count = ctrl.import_csv(path)
+            # 导入后自动保存到 JSON，下次启动直接加载
+            _save_transactions()
             QMessageBox.information(self, "导入完成", f"成功导入 {count} 条交易")
             self.refresh()
             self.data_changed.emit()
@@ -228,41 +253,54 @@ class TransactionTab(QWidget):
             if row < len(txns):
                 if ctrl.delete_transaction(txns[row]):
                     deleted += 1
+        _save_transactions()
         self.refresh(month)
         self.data_changed.emit()
 
 
 class BudgetTab(QWidget):
-    """预算管理 Tab"""
+    """预算管理 Tab — 表格直接编辑，平铺式预算设置"""
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
 
-        # 预算表格
+        # 预算表格 — 限额列可双击编辑
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["类别", "月度限额", "已支出", "剩余", "状态"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setEditTriggers(QAbstractItemView.DoubleClicked)
         self.table.setAlternatingRowColors(True)
+        self.table.cellChanged.connect(self._on_cell_changed)
+        self._updating_table = False  # 防止 cellChanged 信号递归
         layout.addWidget(self.table)
 
-        # 按钮行
+        # 按钮行：添加 / 删除预算
         btn_layout = QHBoxLayout()
-        btn_refresh = QPushButton("刷新列表")
-        btn_refresh.clicked.connect(self.refresh)
-        btn_set = QPushButton("设置预算")
-        btn_set.clicked.connect(self._set_budget)
-        btn_layout.addWidget(btn_refresh)
-        btn_layout.addWidget(btn_set)
+        btn_add = QPushButton("添加预算类别")
+        btn_add.clicked.connect(self._add_budget_row)
+        btn_delete = QPushButton("删除选中预算")
+        btn_delete.clicked.connect(self._delete_budget)
+        btn_layout.addWidget(btn_add)
+        btn_layout.addWidget(btn_delete)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        # 预算规则区
-        rule_group = QGroupBox("预算规则（P1）")
+        # 预算汇总标签
+        self.summary_label = QLabel("")
+        self.summary_label.setStyleSheet("font-weight: bold; padding: 4px; color: #333;")
+        layout.addWidget(self.summary_label)
+
+        # 预算规则区：月收入 → 规则选择 → 两个应用按钮
+        rule_group = QGroupBox("预算规则")
         rule_layout = QHBoxLayout(rule_group)
 
-        rule_layout.addWidget(QLabel("规则类型:"))
+        rule_layout.addWidget(QLabel("月收入:"))
+        self.income_edit = QLineEdit("5000")
+        self.income_edit.setMaximumWidth(80)
+        rule_layout.addWidget(self.income_edit)
+
+        rule_layout.addWidget(QLabel("  规则:"))
         self.rule_group = QButtonGroup(self)
         self.radio_503020 = QRadioButton("50/30/20")
         self.radio_fixed = QRadioButton("固定预算")
@@ -273,21 +311,29 @@ class BudgetTab(QWidget):
         rule_layout.addWidget(self.radio_503020)
         rule_layout.addWidget(self.radio_fixed)
 
-        rule_layout.addWidget(QLabel("  月收入:"))
-        self.income_edit = QLineEdit("5000")
-        self.income_edit.setMaximumWidth(80)
-        rule_layout.addWidget(self.income_edit)
+        btn_apply_503020 = QPushButton("设置预算")
+        btn_apply_503020.setToolTip("按 50/30/20 规则，根据月收入自动分配各类别预算")
+        btn_apply_503020.clicked.connect(lambda: self._apply_rule("503020"))
+        rule_layout.addWidget(btn_apply_503020)
 
-        btn_apply = QPushButton("应用规则")
-        btn_apply.clicked.connect(self._apply_rule)
-        rule_layout.addWidget(btn_apply)
+        btn_apply_fixed = QPushButton("采用固定预算")
+        btn_apply_fixed.setToolTip("使用预设固定金额预算（不依赖月收入）")
+        btn_apply_fixed.clicked.connect(lambda: self._apply_rule("fixed"))
+        rule_layout.addWidget(btn_apply_fixed)
+
         rule_layout.addStretch()
-
         layout.addWidget(rule_group)
 
+    # ================================================================
+    # 表格编辑
+    # ================================================================
+
     def refresh(self, month=None):
+        if month is None:
+            month = _get_current_month()
         ctrl.recalculate_budget_spent(month)
         budgets = ctrl.get_budgets()
+        self._updating_table = True
         self.table.setRowCount(len(budgets))
         for i, b in enumerate(budgets):
             remaining = b.get_remaining()
@@ -297,41 +343,135 @@ class BudgetTab(QWidget):
             self.table.setItem(i, 2, QTableWidgetItem(f"{b.current_spent:.0f}"))
             self.table.setItem(i, 3, QTableWidgetItem(f"{remaining:.0f}"))
             self.table.setItem(i, 4, QTableWidgetItem(status))
+        self._updating_table = False
+        # 更新预算总额 vs 月收入标签
+        total_limit = sum(b.monthly_limit for b in budgets)
+        total_spent = sum(b.current_spent for b in budgets)
+        try:
+            income = float(self.income_edit.text().strip())
+        except ValueError:
+            income = 0.0
+        if income > 0:
+            surplus = income - total_limit
+            if surplus >= 0:
+                self.summary_label.setText(
+                    f"预算总额: ¥{total_limit:.0f}  |  月收入: ¥{income:.0f}  |  "
+                    f"余额: ¥{surplus:+.0f}（预算在收入范围内）"
+                )
+            else:
+                self.summary_label.setText(
+                    f"预算总额: ¥{total_limit:.0f}  |  月收入: ¥{income:.0f}  |  "
+                    f"!! 超额: ¥{surplus:+.0f} 预算已超月收入 !! "
+                )
+        else:
+            self.summary_label.setText(
+                f"预算总额: ¥{total_limit:.0f}  |  已支出: ¥{total_spent:.0f}"
+            )
 
-    def _set_budget(self):
-        dlg = SetBudgetDialog(self)
-        if dlg.exec() == QDialog.Accepted:
-            ctrl.set_budget(dlg.get_budget())
-            self.refresh()
+    def _on_cell_changed(self, row, col):
+        """双击编辑限额后自动同步到 controller 并保存"""
+        if self._updating_table:
+            return
+        if col != 1:  # 只处理"月度限额"列
+            return
+        try:
+            cat_item = self.table.item(row, 0)
+            limit_item = self.table.item(row, 1)
+            if not cat_item or not limit_item:
+                return
+            cat = cat_item.text().strip()
+            if not cat:
+                return
+            limit = float(limit_item.text().strip())
+            ctrl.set_budget(Budget(cat, limit))
+            _save_settings()
+        except ValueError:
+            pass  # 非法输入，refresh 会恢复
 
-    def _apply_rule(self):
+    def _add_budget_row(self):
+        """在表格末尾添加一行待编辑的预算"""
+        row = self.table.rowCount()
+        self._updating_table = True
+        self.table.setRowCount(row + 1)
+        self.table.setItem(row, 0, QTableWidgetItem("双击编辑类别"))
+        self.table.setItem(row, 1, QTableWidgetItem("0"))
+        self.table.setItem(row, 2, QTableWidgetItem("0"))
+        self.table.setItem(row, 3, QTableWidgetItem("0"))
+        self.table.setItem(row, 4, QTableWidgetItem("正常"))
+        self._updating_table = False
+        ctrl.set_budget(Budget("双击编辑类别", 0))
+        _save_settings()
+
+    def _delete_budget(self):
+        """删除选中的预算行"""
+        rows = set(idx.row() for idx in self.table.selectedIndexes())
+        if not rows:
+            QMessageBox.warning(self, "未选择", "请先选中要删除的预算行")
+            return
+        budgets = ctrl.get_budgets()
+        to_remove = []
+        for row in sorted(rows, reverse=True):
+            if row < len(budgets):
+                to_remove.append(budgets[row].category)
+        if not to_remove:
+            return
+        reply = QMessageBox.question(self, "确认删除",
+                                     f"确定要删除 {len(to_remove)} 个预算类别吗？\n"
+                                     f"{', '.join(to_remove)}",
+                                     QMessageBox.Yes | QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        for cat in to_remove:
+            ctrl.remove_budget(cat)
+        _save_settings()
+        self.refresh()
+
+    # ================================================================
+    # 预算规则
+    # ================================================================
+
+    def _apply_rule(self, method: str = "503020"):
+        """
+        method="503020": 按 50/30/20 规则分配
+        method="fixed":   采用固定预算默认值
+        """
         try:
             income = float(self.income_edit.text().strip())
         except ValueError:
             QMessageBox.critical(self, "错误", "请输入有效收入金额")
             return
 
-        if self.radio_503020.isChecked():
+        if method == "503020":
             ctrl.set_budget_rule(Rule503020())
         else:
             rule = FixedBudgetRule()
-            for cat, lim in [("餐饮", 1000), ("餐饮食品", 300), ("交通", 200),
+            for cat, lim in [("餐饮", 1200), ("交通", 200),
                              ("学习", 300), ("数码电子", 200), ("个人护理", 150),
                              ("家居日用", 300), ("运动户外", 200), ("服饰配饰", 150),
-                             ("医疗健康", 100), ("娱乐", 300), ("娱乐玩具", 100),
+                             ("医疗健康", 100), ("娱乐", 300),
                              ("其他", 100)]:
                 rule.set_budget(cat, lim)
             ctrl.set_budget_rule(rule)
 
         try:
             result = ctrl.apply_budget_rule(income)
-            msg = "建议预算分配:\n"
-            for cat, amt in result.items():
-                msg += f"  {cat}: ¥{amt:.0f}\n"
-            QMessageBox.information(self, "预算规则结果", msg)
+            total_allocated = sum(v for k, v in result.items() if k != "储蓄")
+            # 固定预算模式下检查是否超收
+            if method == "fixed" and total_allocated > income:
+                reply = QMessageBox.warning(
+                    self, "预算超收",
+                    f"固定预算总额 ¥{total_allocated:.0f} 超过月收入 ¥{income:.0f}。\n"
+                    f"超支 ¥{total_allocated - income:.0f}，建议调低预算或确认收入金额。\n\n"
+                    "是否仍要应用？",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if reply == QMessageBox.No:
+                    return
+            # 直接应用，不再弹窗（表格已平铺可见）
             for cat, amt in result.items():
                 if cat != "储蓄":
                     ctrl.set_budget(Budget(cat, amt))
+            _save_settings()
             self.refresh()
         except Exception as e:
             QMessageBox.critical(self, "错误", str(e))
@@ -350,7 +490,7 @@ class DiagnosisTab(QWidget):
 
         btn_layout = QHBoxLayout()
         btn_run = QPushButton("生成诊断报告")
-        btn_run.clicked.connect(self.run)
+        btn_run.clicked.connect(lambda: self.run())
         btn_layout.addWidget(btn_run)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
@@ -362,10 +502,27 @@ class DiagnosisTab(QWidget):
             self.text.append("(暂无交易数据，请先导入CSV或录入交易)")
             return
 
+        # 健壮的月份选择：优先传入，其次当前选中，最后最新月份
         if month is None:
-            month = _get_current_month() or months[-1]
+            month = _get_current_month()
+        if not month or month not in months:
+            month = months[-1]  # 兜底：使用最新有数据的月份
 
         self.text.append(f"诊断月份: {month}")
+        # 检查该月是否有交易数据
+        txns_check = ctrl.get_transactions(month)
+        if not txns_check:
+            self.text.append(f"(注意: 月份 {month} 暂无交易记录，诊断结果仅供参考)")
+            self.text.append("=" * 60)
+            return  # 无数据直接返回，不跑诊断
+        # 检查数据是否过于稀疏（不足5笔或总支出<¥100，诊断参考价值低）
+        expense_total = sum(t.amount for t in txns_check if t.is_expense())
+        income_total = sum(t.amount for t in txns_check if t.is_income())
+        if len(txns_check) < 5 or expense_total < 100:
+            self.text.append(
+                f"(警告: 该月仅 {len(txns_check)} 笔记录、支出 ¥{expense_total:.0f}、"
+                f"收入 ¥{income_total:.0f}，数据量不足以支撑可靠诊断，以下结果仅供参考)"
+            )
         self.text.append("=" * 60)
         try:
             report = ctrl.generate_diagnosis(month)
@@ -470,11 +627,28 @@ class SavingsTab(QWidget):
         method_input.addStretch()
         method_layout.addLayout(method_input)
 
+        # 方法公式说明标签（随选中方法动态更新）
+        self.method_desc_label = QLabel("")
+        self.method_desc_label.setStyleSheet(
+            "color: #555; font-size: 12px; padding: 2px 8px; "
+            "background: #f5f5f5; border-radius: 3px;"
+        )
+        self.method_desc_label.setWordWrap(True)
+        method_layout.addWidget(self.method_desc_label)
+
+        # 切换方法时更新公式说明
+        radio_fixed.toggled.connect(lambda checked: self._update_method_desc() if checked else None)
+        radio_52w.toggled.connect(lambda checked: self._update_method_desc() if checked else None)
+        radio_52wr.toggled.connect(lambda checked: self._update_method_desc() if checked else None)
+        radio_pct.toggled.connect(lambda checked: self._update_method_desc() if checked else None)
+
         self.method_text = QTextEdit()
         self.method_text.setReadOnly(True)
         self.method_text.setFont(QFont("Microsoft YaHei", 10))
         method_layout.addWidget(self.method_text)
         layout.addWidget(method_group)
+
+        self._update_method_desc()  # 初始显示
 
     def _run_goal(self):
         self.goal_text.clear()
@@ -489,6 +663,10 @@ class SavingsTab(QWidget):
         except Exception as e:
             self.goal_text.append(f"计算失败: {e}")
             return
+
+        # 将月度储蓄目标同步到 controller，供诊断使用
+        ctrl.set_savings_target(plan.required_monthly_saving)
+        _save_settings()
 
         self.goal_text.append("=" * 55)
         self.goal_text.append(f"  储蓄目标: ¥{target:.0f} / {months} 个月")
@@ -507,6 +685,43 @@ class SavingsTab(QWidget):
         for s in plan.suggestions:
             self.goal_text.append(f"    [{s.priority}] {s.description}")
         self.goal_text.append("=" * 55)
+
+    def _update_method_desc(self):
+        """根据当前选中的储蓄方法显示计算公式"""
+        method_id = self.method_group.checkedId()
+        try:
+            param = float(self.method_param.text().strip() or "0")
+            income = float(self.saving_income.text().strip() or "0")
+        except ValueError:
+            param = 0.0
+            income = 0.0
+        if method_id == 0:  # 固定金额
+            annual = param * 12
+            weekly = annual / 52
+            self.method_desc_label.setText(
+                f"固定金额法：每月存 ¥{param:.0f} → 年总额 ¥{annual:.0f}"
+                f"（52周均分，每周 ¥{weekly:.0f}）"
+            )
+        elif method_id == 1:  # 52周递增
+            annual = param * 1378  # base × (1+2+...+52) = base × 1378
+            self.method_desc_label.setText(
+                f"52周递增法：基数 ¥{param:.0f}，第N周存 N×¥{param:.0f}"
+                f" → 年总额 ¥{param:.0f}×1378=¥{annual:.0f}"
+            )
+        elif method_id == 2:  # 52周递减
+            annual = param * 1378
+            self.method_desc_label.setText(
+                f"52周递减法：基数 ¥{param:.0f}，第1周存 ¥{param*52:.0f}"
+                f" 递减至第52周 ¥{param:.0f} → 年总额 ¥{annual:.0f}"
+            )
+        elif method_id == 3:  # 收入%
+            rate = param / 100.0
+            monthly = income * rate
+            annual = monthly * 12
+            self.method_desc_label.setText(
+                f"收入百分比法：每月存收入的 {param:.0f}%（¥{monthly:.0f}）"
+                f" → 年总额 ¥{annual:.0f}"
+            )
 
     def _run_method(self):
         self.method_text.clear()
@@ -536,8 +751,14 @@ class SavingsTab(QWidget):
             self.method_text.append(f"计算失败: {e}")
             return
 
+        # 将月度储蓄目标同步到 controller，供诊断使用
+        ctrl.set_savings_target(plan.annual_total / 12)
+        _save_settings()
+
         self.method_text.append(f"方法说明: {plan.description}")
-        self.method_text.append(f"年储蓄总额: ¥{plan.annual_total:.0f}")
+        self.method_text.append("")
+        self.method_text.append(f"==== 年储蓄总额: ¥{plan.annual_total:.0f} ====")
+        self.method_text.append("")
         self.method_text.append("-" * 55)
         self.method_text.append("52周储蓄计划（前12周）:")
         for i in range(12):
@@ -606,6 +827,20 @@ def _get_current_month():
     m = current_month()
     return m if m else None
 
+def _save_settings():
+    """将所有设置持久化到 app_settings.json（预算 + 储蓄目标等）"""
+    try:
+        ctrl.save_settings(str(_settings_path))
+    except Exception:
+        pass  # 静默失败，不影响主流程
+
+def _save_transactions():
+    """将交易记录持久化到 transactions.json"""
+    try:
+        ctrl.save_transactions(str(_transactions_path))
+    except Exception:
+        pass
+
 current_month = lambda: None
 
 
@@ -653,14 +888,15 @@ class MainWindow(QMainWindow):
 
         # 状态栏
         self.statusBar().showMessage(
-            f"自动导入: {'; '.join(_auto_import_log)}" if _auto_import_log
-            else "就绪（未找到CSV文件，可手动导入或添加交易）"
+            f"启动: {'; '.join(_startup_log)}" if _startup_log
+            else "就绪（无数据，可手动导入CSV或添加交易）"
         )
 
         # 初始加载
         self._refresh_months()
-        self.txn_tab.refresh()
-        self.budget_tab.refresh()
+        latest = self.month_combo.currentText() if self.month_combo.count() > 0 else None
+        self.txn_tab.refresh(latest)
+        self.budget_tab.refresh(latest)
         self.alert_tab.refresh()
 
     def _refresh_months(self):

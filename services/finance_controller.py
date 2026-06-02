@@ -4,9 +4,13 @@
 #   - get_transactions() 返回全部交易（扁平化）
 #   - get_transactions("2025-09") 只返回指定月份
 #   - generate_diagnosis() 默认使用最新月份的数据
-from models.transaction import Transaction
+import json
+from pathlib import Path
+from datetime import date as date_type
+
+from models.transaction import Transaction, AccountType
 from models.budget import Budget
-from services.category_normalizer import LEGACY_CATEGORY_MAP
+from services.category_normalizer import LEGACY_CATEGORY_MAP, CATEGORY_PARENTS
 
 
 class FinanceController:
@@ -130,6 +134,105 @@ class FinanceController:
     def get_budgets(self) -> list[Budget]:
         return self._budgets.copy()
 
+    def remove_budget(self, category: str) -> bool:
+        """删除指定类别的预算。返回 True 表示成功删除。"""
+        for i, b in enumerate(self._budgets):
+            if b.category == category:
+                self._budgets.pop(i)
+                return True
+        return False
+
+    # ================================================================
+    # 持久化：设置（app_settings.json）
+    # ================================================================
+
+    def save_settings(self, path: str) -> None:
+        """将所有设置持久化到单个 JSON 文件（预算 + 储蓄目标）"""
+        data = {
+            "budgets": [{"category": b.category, "monthly_limit": b.monthly_limit}
+                        for b in self._budgets],
+            "savings_target": self.get_savings_target(),
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def load_settings(self, path: str) -> None:
+        """从 JSON 文件加载所有设置。文件不存在则跳过。
+        兼容旧 budgets.json 自动迁移。
+        """
+        if not Path(path).exists():
+            # 尝试从旧 budgets.json 迁移
+            old_path = Path(path).parent / "budgets.json"
+            if old_path.exists():
+                self._migrate_old_settings(str(old_path), path)
+            return
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        for item in data.get("budgets", []):
+            self.set_budget(Budget(item["category"], item["monthly_limit"]))
+        if data.get("savings_target") is not None:
+            self._savings_target = data["savings_target"]
+
+    def _migrate_old_settings(self, old_path: str, new_path: str) -> None:
+        """从旧 budgets.json 迁移到 app_settings.json"""
+        with open(old_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            for item in data:
+                self.set_budget(Budget(item["category"], item["monthly_limit"]))
+        self.save_settings(new_path)
+        # 迁移后删除旧文件
+        try:
+            Path(old_path).unlink()
+        except Exception:
+            pass
+
+    # ================================================================
+    # 持久化：交易记录（transactions.json）
+    # ================================================================
+
+    def save_transactions(self, path: str) -> None:
+        """将所有交易持久化到 JSON 文件（按月分组）"""
+        data = {}
+        for month, txns in self._transactions.items():
+            data[month] = []
+            for t in txns:
+                data[month].append({
+                    "amount": t.amount,
+                    "type": t.type,
+                    "category": t.category,
+                    "account": t.account.value,
+                    "date": t.date.isoformat(),
+                    "note": t.note,
+                })
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def load_transactions(self, path: str) -> int:
+        """从 JSON 文件加载交易记录。返回加载条数。文件不存在返回 0。"""
+        if not Path(path).exists():
+            return 0
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        count = 0
+        for month, txns in data.items():
+            for item in txns:
+                t = Transaction(
+                    amount=item["amount"],
+                    type=item["type"],
+                    category=item["category"],
+                    account=AccountType(item["account"]),
+                    date=date_type.fromisoformat(item["date"]),
+                    note=item.get("note", ""),
+                )
+                # 直接插入内部字典，跳过 add_transaction 的预算预警逻辑
+                # （加载历史数据不应触发实时预警）
+                if month not in self._transactions:
+                    self._transactions[month] = []
+                self._transactions[month].append(t)
+                count += 1
+        return count
+
     # ================================================================
     # 诊断
     # ================================================================
@@ -193,6 +296,18 @@ class FinanceController:
             raise RuntimeError("SavingsMethod 未设置。请先调用 set_savings_method()")
         return self.savings_method.calculate(income, self.get_transactions())
 
+    # ================================================================
+    # 储蓄目标（供诊断策略使用）
+    # ================================================================
+
+    def set_savings_target(self, monthly_target: float) -> None:
+        """设置月度储蓄目标（由 SavingsTab 在计算后调用）"""
+        self._savings_target = monthly_target
+
+    def get_savings_target(self) -> float | None:
+        """获取月度储蓄目标，未设置返回 None"""
+        return getattr(self, '_savings_target', None)
+
     def generate_saving_plan(self, target: float, months: int):
         """储蓄倒推计划。委托给 SavingGoalCalculator（E提供）。"""
         calc = self._get_saving_calculator()
@@ -234,11 +349,20 @@ class FinanceController:
 
     @staticmethod
     def _category_matches(txn_category: str, budget_category: str) -> bool:
-        """判断交易类别是否匹配预算类别（含向后兼容）。
-        例如：交易"日用"可匹配预算"家居日用"。
+        """判断交易类别是否匹配预算类别。
+        支持四种匹配：
+          1. 直接相等（交易类别 == 预算类别）
+          2. 旧类别名映射（如"日用"→"家居日用"）
+          3. 父子类别匹配（如"餐饮食品"的支出计入"餐饮"预算）
         """
         if txn_category == budget_category:
             return True
         # 旧类别名 → 新类别名
         mapped = LEGACY_CATEGORY_MAP.get(txn_category, txn_category)
-        return mapped == budget_category
+        if mapped == budget_category:
+            return True
+        # 父子类别：交易是子类别，预算属于父类别
+        parent = CATEGORY_PARENTS.get(mapped)
+        if parent is not None and parent == budget_category:
+            return True
+        return False
