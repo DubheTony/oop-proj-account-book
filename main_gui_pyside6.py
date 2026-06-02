@@ -17,6 +17,7 @@ from models.transaction import Transaction, AccountType
 from models.budget import Budget
 from models.diagnosis_report import HealthLevel
 from services import FinanceController
+from services.category_normalizer import STANDARD_CATEGORIES
 
 # ---------- 全局控制器 + 启动时自动导入CSV ----------
 ctrl = FinanceController()
@@ -67,7 +68,7 @@ class AddTransactionDialog(QDialog):
         self.type_combo = QComboBox()
         self.type_combo.addItems(["支出", "收入"])
         self.cat_combo = QComboBox()
-        self.cat_combo.addItems(["餐饮", "交通", "娱乐", "学习", "日用", "其他"])
+        self.cat_combo.addItems(STANDARD_CATEGORIES)
         self.cat_combo.setEditable(True)
         self.acc_combo = QComboBox()
         self.acc_combo.addItems(["微信", "支付宝", "现金", "银行卡"])
@@ -113,7 +114,7 @@ class SetBudgetDialog(QDialog):
         layout = QFormLayout(self)
 
         self.cat_combo = QComboBox()
-        self.cat_combo.addItems(["餐饮", "交通", "娱乐", "学习", "日用", "其他"])
+        self.cat_combo.addItems(STANDARD_CATEGORIES)
         self.cat_combo.setEditable(True)
         self.limit_edit = QLineEdit()
 
@@ -314,7 +315,11 @@ class BudgetTab(QWidget):
             ctrl.set_budget_rule(Rule503020())
         else:
             rule = FixedBudgetRule()
-            for cat, lim in [("餐饮", 1500), ("交通", 300), ("娱乐", 500), ("日用", 300), ("学习", 200)]:
+            for cat, lim in [("餐饮", 1000), ("餐饮食品", 300), ("交通", 200),
+                             ("学习", 300), ("数码电子", 200), ("个人护理", 150),
+                             ("家居日用", 300), ("运动户外", 200), ("服饰配饰", 150),
+                             ("医疗健康", 100), ("娱乐", 300), ("娱乐玩具", 100),
+                             ("其他", 100)]:
                 rule.set_budget(cat, lim)
             ctrl.set_budget_rule(rule)
 

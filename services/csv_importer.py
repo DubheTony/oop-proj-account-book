@@ -11,6 +11,7 @@ from models.transaction import Transaction, AccountType
 from services.category_normalizer import (
     normalize_alipay_category,
     infer_category_wechat,
+    LEGACY_CATEGORY_MAP,
 )
 
 
@@ -176,6 +177,8 @@ def _import_wechat(path: str) -> tuple[list[Transaction], int]:
                 t_type = "支出" if raw_type == "支出" else "收入"
                 # 微信没有类别字段，从商户名推断
                 category = infer_category_wechat(merchant, product)
+                # 向后兼容：旧类别名 → 新类别名
+                category = LEGACY_CATEGORY_MAP.get(category, category)
                 # 微信来源，账户固定为 WECHAT
                 account = AccountType.WECHAT
                 # 备注：优先用备注列，为空则用商品描述
@@ -257,6 +260,8 @@ def _import_alipay(path: str) -> tuple[list[Transaction], int]:
                 if category is None:
                     # 投资理财/退款/账户存取 → 跳过
                     continue
+                # 向后兼容：旧类别名 → 新类别名
+                category = LEGACY_CATEGORY_MAP.get(category, category)
 
                 t_date = _parse_date(raw_date)
                 amount = _parse_amount(raw_amount)  # 兼容纯数字和含逗号金额
