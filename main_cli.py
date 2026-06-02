@@ -1,101 +1,8 @@
-# main_cli — 最小CLI原型（第1周）
-# 目的：用假数据验证Controller API，提前发现设计问题
+# main_cli — 个人财务管理系统命令行入口
 from datetime import date
 from models.transaction import Transaction, AccountType
 from models.budget import Budget
-
-
-# ============================================================
-# 简易 Controller（C 交付正式版后替换）
-# ============================================================
-
-class FinanceController:
-    """临时Controller骨架，C交付后替换"""
-
-    def __init__(self):
-        self._transactions = []
-        self._budgets = []
-        self._alert_messages = []
-
-    def add_transaction(self, t: Transaction):
-        self._transactions.append(t)
-        if t.is_expense():
-            b = self._find_budget(t.category)
-            if b:
-                was_exceeded = b.is_exceeded()
-                b.add_expense(t.amount)
-                if not was_exceeded and b.is_exceeded():
-                    over = b.current_spent - b.monthly_limit
-                    self._alert_messages.append(
-                        f"[预警] {t.date} | {t.category}预算超支！"
-                        f"限额¥{b.monthly_limit:.0f}，已支出¥{b.current_spent:.0f}，超出¥{over:.0f}"
-                    )
-
-    def get_transactions(self):
-        return self._transactions.copy()
-
-    def set_budget(self, b: Budget):
-        for i, old in enumerate(self._budgets):
-            if old.category == b.category:
-                self._budgets[i] = b
-                return
-        self._budgets.append(b)
-
-    def get_budgets(self):
-        return self._budgets.copy()
-
-    def import_csv(self, path: str) -> int:
-        from services.csv_importer import import_csv
-        transactions, skipped = import_csv(path)
-        for t in transactions:
-            self.add_transaction(t)
-        return len(transactions)
-
-    def get_alerts(self):
-        msgs = self._alert_messages.copy()
-        self._alert_messages.clear()
-        return msgs
-
-    def _find_budget(self, category: str):
-        for b in self._budgets:
-            if b.category == category:
-                return b
-        return None
-
-
-# ============================================================
-# 预设假数据
-# ============================================================
-
-def load_demo_data(ctrl: FinanceController):
-    """加载演示用假数据"""
-    ctrl.add_transaction(Transaction(
-        35.5, "支出", "餐饮", AccountType.WECHAT,
-        date(2025, 3, 15), "食堂午饭"))
-    ctrl.add_transaction(Transaction(
-        2000, "收入", "其他", AccountType.BANK_CARD,
-        date(2025, 3, 15), "三月生活费"))
-    ctrl.add_transaction(Transaction(
-        89, "支出", "娱乐", AccountType.ALIPAY,
-        date(2025, 3, 16), "电影票"))
-    ctrl.add_transaction(Transaction(
-        12, "支出", "交通", AccountType.CASH,
-        date(2025, 3, 17), "地铁通勤"))
-    ctrl.add_transaction(Transaction(
-        150, "支出", "餐饮", AccountType.WECHAT,
-        date(2025, 3, 18), "周末聚餐"))
-    ctrl.add_transaction(Transaction(
-        200, "支出", "学习", AccountType.ALIPAY,
-        date(2025, 3, 19), "买教材"))
-    ctrl.add_transaction(Transaction(
-        66, "支出", "日用", AccountType.WECHAT,
-        date(2025, 3, 20), "超市采购"))
-    # 设置预算
-    ctrl.set_budget(Budget("餐饮", 1500))
-    ctrl.set_budget(Budget("娱乐", 300))
-    ctrl.set_budget(Budget("交通", 200))
-    ctrl.set_budget(Budget("学习", 500))
-    ctrl.set_budget(Budget("日用", 400))
+from services import FinanceController
 
 
 # ============================================================
@@ -109,7 +16,7 @@ def print_menu():
     print("2. 添加交易")
     print("3. 查看预算")
     print("4. 设置预算")
-    print("5. 生成诊断报告（需D的Strategy）")
+    print("5. 生成诊断报告")
     print("6. 生成储蓄计划（需E的SavingGoalCalculator）")
     print("7. 导入CSV")
     print("8. 查看预警消息")
@@ -118,11 +25,13 @@ def print_menu():
 
 
 def print_transactions(ctrl: FinanceController):
-    txns = ctrl.get_transactions()
-    if not txns:
+    months = ctrl.get_months()
+    if not months:
         print("  (暂无交易)")
         return
-    print(f"  共 {len(txns)} 条交易:")
+
+    txns = ctrl.get_transactions()
+    print(f"  共 {len(txns)} 条交易，覆盖 {len(months)} 个月 ({months[0]} ~ {months[-1]}):")
     for t in txns:
         print(f"  {t.date} | {t.type} | {t.category} | "
               f"{t.amount:>8.2f} | {t.account.value} | {t.note}")
@@ -191,12 +100,69 @@ def import_csv_interactive(ctrl: FinanceController):
 
 
 def print_alerts(ctrl: FinanceController):
-    alerts = ctrl.get_alerts()
+    alerts = ctrl.get_alert_messages()
     if not alerts:
         print("  (暂无预警)")
         return
     for a in alerts:
         print(f"  {a}")
+
+
+def run_diagnosis(ctrl: FinanceController):
+    """运行综合诊断并打印报告"""
+    from models.diagnosis_report import HealthLevel
+
+    months = ctrl.get_months()
+    if not months:
+        print("  (暂无交易数据，无法生成诊断报告。请先导入CSV或录入交易。)")
+        return
+
+    # 默认诊断最新月份
+    month = months[-1]
+    print(f"  诊断月份: {month}（共 {len(months)} 个月可选: {', '.join(months)}）")
+
+    try:
+        report = ctrl.generate_diagnosis(month)
+    except RuntimeError as e:
+        print(f"  诊断失败: {e}")
+        return
+
+    # 打印报告
+    emoji = {HealthLevel.HEALTHY: "[健康]", HealthLevel.WARNING: "[预警]", HealthLevel.CRITICAL: "[严重]"}
+    print()
+    print("=" * 60)
+    print(f"  诊断报告 — {month}")
+    print("=" * 60)
+    print(f"  综合评分: {report.overall_score:.0f}/100  {emoji.get(report.overall_level, '')}")
+    print()
+
+    # 各维度明细
+    print(f"  各维度明细 ({len(report.dimensions)}项):")
+    print("  " + "-" * 50)
+    for dim in report.dimensions:
+        mark = emoji.get(dim.level, "")
+        print(f"  {dim.strategy_name}: {dim.score:.0f}分  {mark}")
+        if dim.suggestion:
+            desc = dim.suggestion.description
+            if len(desc) > 80:
+                desc = desc[:80] + "..."
+            print(f"    -> {desc}")
+    print()
+
+    # 改进建议
+    if report.suggestions:
+        print(f"  改进建议 ({len(report.suggestions)}条，按影响金额降序):")
+        print("  " + "-" * 50)
+        priority_map = {1: "高优先级", 2: "中优先级", 3: "低优先级"}
+        for i, s in enumerate(report.suggestions, 1):
+            label = priority_map.get(s.priority, "")
+            print(f"  {i}. [{label}] {s.category}")
+            print(f"     {s.description}")
+            print(f"     预计月改善: ¥{s.impact_amount:.0f}")
+    else:
+        print("  无改进建议，财务状况健康！")
+
+    print("=" * 60)
 
 
 # ============================================================
@@ -205,7 +171,19 @@ def print_alerts(ctrl: FinanceController):
 
 def main():
     ctrl = FinanceController()
-    load_demo_data(ctrl)
+
+    # 设置诊断策略（D提供的CompositeDiagnosis）
+    from strategies import (
+        SavingRateStrategy,
+        CategoryOverrunStrategy,
+        ConsumptionStructureStrategy,
+        CompositeDiagnosis,
+    )
+    ctrl.set_diagnosis_strategy(CompositeDiagnosis([
+        (SavingRateStrategy(), 0.4),
+        (CategoryOverrunStrategy(), 0.3),
+        (ConsumptionStructureStrategy(), 0.3),
+    ]))
 
     # 菜单路由表
     handlers = {
@@ -213,6 +191,8 @@ def main():
         "2": lambda: add_transaction_interactive(ctrl),
         "3": lambda: print_budgets(ctrl),
         "4": lambda: set_budget_interactive(ctrl),
+        "5": lambda: run_diagnosis(ctrl),
+        "6": lambda: print("  (待E的储蓄计算模块完成后对接)"),
         "7": lambda: import_csv_interactive(ctrl),
         "8": lambda: print_alerts(ctrl),
     }
@@ -224,10 +204,6 @@ def main():
         if choice == "0":
             print("再见！")
             break
-        elif choice == "5":
-            print("  (待D的诊断策略模块完成后对接)")
-        elif choice == "6":
-            print("  (待E的储蓄计算模块完成后对接)")
         elif choice in handlers:
             handlers[choice]()
         else:
