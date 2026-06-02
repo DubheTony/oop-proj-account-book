@@ -159,7 +159,7 @@ class ConsumptionStructureStrategy(DiagnosticStrategy):
         dim_basic, s_basic = self._eval_upper_dim(
             "基础饮食占比", "基础饮食", basic_food, basic_ratio,
             self.BASIC_FOOD_MAX, total_expense, 2,
-            "食堂/食材/超市月均 ¥{amount:.0f}，占比 {ratio:.0%}"
+            "食堂/食材/超市本月 ¥{amount:.0f}，占比 {ratio:.0%}"
             "（建议 <{bound:.0%}）。超出 ¥{excess:.0f}/月。"
         )
         dimensions.append(dim_basic)
@@ -170,7 +170,7 @@ class ConsumptionStructureStrategy(DiagnosticStrategy):
         dim_social, s_social = self._eval_upper_dim(
             "社交饮食占比", "社交饮食", social_food, social_ratio,
             self.SOCIAL_FOOD_MAX, total_expense, 1,
-            "外卖+聚餐月均 ¥{amount:.0f}，占比 {ratio:.0%}"
+            "外卖+聚餐本月 ¥{amount:.0f}，占比 {ratio:.0%}"
             "（建议 <{bound:.0%}）。超出 ¥{excess:.0f}/月。"
             "建议减少外卖频次或聚餐次数。"
         )
@@ -182,7 +182,7 @@ class ConsumptionStructureStrategy(DiagnosticStrategy):
         dim_ent, s_ent = self._eval_upper_dim(
             "娱乐占比", "娱乐", entertainment, ent_ratio,
             self.ENTERTAINMENT_MAX, total_expense, 2,
-            "娱乐月均 ¥{amount:.0f}，占比 {ratio:.0%}"
+            "娱乐本月 ¥{amount:.0f}，占比 {ratio:.0%}"
             "（建议 <{bound:.0%}）。超出 ¥{excess:.0f}/月。"
         )
         dimensions.append(dim_ent)
@@ -193,7 +193,7 @@ class ConsumptionStructureStrategy(DiagnosticStrategy):
         dim_study, s_study = self._eval_lower_dim(
             "学习占比", "学习", study, study_ratio,
             self.STUDY_MIN, total_expense, 2,
-            "学习支出月均 ¥{amount:.0f}，占比 {ratio:.0%}"
+            "学习支出本月 ¥{amount:.0f}，占比 {ratio:.0%}"
             "（建议 >{bound:.0%}）。建议增加学习投资 ¥{shortage:.0f}/月。"
         )
         dimensions.append(dim_study)

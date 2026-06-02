@@ -21,19 +21,19 @@ class Week52Method(SavingsMethod):
             # 反向版：第1周存最多，递减
             amounts = [(53 - n) * self.base for n in range(1, 53)]
             desc = (
-                f"反向52周存款法：第1周存 ¥{amounts[0]:.0f}，"
-                f"递减至第52周 ¥{amounts[51]:.0f}。"
+                f"反向52周存款法（基数¥{self.base:.0f}，公式：第N周=(53-N)×基数）："
+                f"第1周存 ¥{amounts[0]:.0f}，递减至第52周 ¥{amounts[51]:.0f}。"
             )
         else:
             # 标准版：第1周存最少，递增
             amounts = [n * self.base for n in range(1, 53)]
             desc = (
-                f"标准52周存款法：第1周存 ¥{amounts[0]:.0f}，"
-                f"递增至第52周 ¥{amounts[51]:.0f}。"
+                f"标准52周存款法（基数¥{self.base:.0f}，公式：第N周=N×基数）："
+                f"第1周存 ¥{amounts[0]:.0f}，递增至第52周 ¥{amounts[51]:.0f}。"
             )
 
         annual = sum(amounts)
-        desc += f"年累计 ¥{annual:.0f}。"
+        desc += f"年累计 ¥{annual:.0f}（= {self.base:.0f}×1378）。"
 
         return SavingsPlan(
             weekly_amounts=amounts,

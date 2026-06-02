@@ -7,6 +7,7 @@ from .category_normalizer import (
     CATEGORY_MAP,               # 简单映射表（兼容旧代码）
     STANDARD_CATEGORIES,        # 所有标准类别列表
     LEGACY_CATEGORY_MAP,        # 旧类别→新类别映射
+    CATEGORY_PARENTS,           # 父子类别关系（子→父）
 )
 from .csv_importer import import_csv  # -> tuple[list[Transaction], int]
 from .finance_controller import FinanceController
