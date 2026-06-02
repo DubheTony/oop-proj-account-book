@@ -6,3 +6,4 @@ from .category_normalizer import (
     CATEGORY_MAP,               # 简单映射表（兼容旧代码）
 )
 from .csv_importer import import_csv  # -> tuple[list[Transaction], int]
+from .finance_controller import FinanceController
