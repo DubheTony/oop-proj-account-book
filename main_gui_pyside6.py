@@ -41,7 +41,7 @@ try:
         _startup_log.append(f"交易记录: {_txn_count} 条(来自JSON)")
     else:
         # 首次使用：尝试从 CSV 导入并自动保存到 JSON
-        _csv_files = sorted(_script_dir.glob("*.csv"))
+        _csv_files = sorted(_script_dir.glob("*.csv")) + sorted((_script_dir / "data").glob("*.csv"))
         for _csv_path in _csv_files:
             try:
                 _count = ctrl.import_csv(str(_csv_path))
