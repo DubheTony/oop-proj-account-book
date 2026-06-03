@@ -1,6 +1,5 @@
-# Transaction + AccountType — 核心交易实体
+# 交易实体 + 支付账户枚举
 from enum import Enum
-from dataclasses import dataclass
 from datetime import date
 
 
@@ -12,18 +11,22 @@ class AccountType(Enum):
     BANK_CARD = "银行卡"
 
 
-@dataclass
 class Transaction:
     """一笔交易记录"""
-    amount: float          # 金额
-    type: str              # "收入" 或 "支出"
-    category: str          # 类别：餐饮/交通/娱乐/学习/日用/其他
-    account: AccountType   # 支付账户
-    date: date             # 交易日期
-    note: str = ""         # 备注
 
-    def is_expense(self) -> bool:
+    def __init__(self, amount: float, type: str, category: str,
+                 account: AccountType, date: date, note: str = ""):
+        self.amount = amount      # 金额
+        self.type = type          # "收入" 或 "支出"
+        self.category = category  # 类别：餐饮/交通/娱乐/学习/日用/其他
+        self.account = account    # 支付账户
+        self.date = date          # 交易日期
+        self.note = note          # 备注
+
+    def is_expense(self):
+        """是否是支出"""
         return self.type == "支出"
 
-    def is_income(self) -> bool:
+    def is_income(self):
+        """是否是收入"""
         return self.type == "收入"

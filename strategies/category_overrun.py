@@ -11,21 +11,17 @@ from .diagnostic_strategy import DiagnosticStrategy
 class CategoryOverrunStrategy(DiagnosticStrategy):
     """类别超支诊断：遍历所有预算，检测各类别是否超支。"""
 
-    # 可配置阈值
-    CRITICAL_OVERRUN = 0.30   # 超支超过 30% 视为严重
+    CRITICAL_OVERRUN = 0.30  # 超支超过 30% 视为严重
 
-    def diagnose(
-        self,
-        transactions: list[Transaction],
-        budgets: list[Budget]
-    ) -> DiagnosisReport:
-        # ----- 边界：无预算 -----
+    def diagnose(self, transactions: list[Transaction],
+                 budgets: list[Budget]) -> DiagnosisReport:
+        # 边界：无预算
         if not budgets:
             dim = DimensionDetail("类别超支诊断", 100, HealthLevel.HEALTHY, None)
             return DiagnosisReport(HealthLevel.HEALTHY, 100, [dim], [])
 
-        # ----- 遍历预算，收集超支类别 -----
-        exceeded = []  # [(category, spent, limit, overrun_ratio, over_amount), ...]
+        # 遍历预算，收集超支类别
+        exceeded = []
         for b in budgets:
             if not b.is_exceeded():
                 continue
@@ -36,12 +32,12 @@ class CategoryOverrunStrategy(DiagnosticStrategy):
             exceeded.append((b.category, b.current_spent, b.monthly_limit,
                              overrun_ratio, over_amount))
 
-        # ----- 无超支 -----
+        # 无超支
         if not exceeded:
             dim = DimensionDetail("类别超支诊断", 100, HealthLevel.HEALTHY, None)
             return DiagnosisReport(HealthLevel.HEALTHY, 100, [dim], [])
 
-        # ----- 有超支：基于最严重超支评分 -----
+        # 有超支：基于最严重超支评分
         max_ratio = max(e[3] for e in exceeded)
         score = max(0, 100 - max_ratio * 100)
 
@@ -57,12 +53,8 @@ class CategoryOverrunStrategy(DiagnosticStrategy):
                 priority=1,
                 impact_amount=over,
                 category=cat,
-                description=(
-                    f"该类别超支 ¥{over:.0f}"
-                    f"（限额 ¥{limit:.0f}，已支出 ¥{spent:.0f}），"
-                    f"超支 {ratio:.0%}。"
-                    f"建议削减该类别支出或调整预算限额。"
-                )
+                description=(f"{cat} 超支 ¥{over:.0f}（限额 ¥{limit:.0f}，已支出 ¥{spent:.0f}），"
+                             f"超支 {ratio:.0%}。建议削减该类支出或调整预算限额。")
             )
             suggestions.append(s)
 
@@ -73,13 +65,8 @@ class CategoryOverrunStrategy(DiagnosticStrategy):
             cats = "、".join(e[0] for e in exceeded)
             dim_name = f"类别超支({cats})"
 
-        # 第一个超支类别的建议作为维度建议
         first_s = suggestions[0] if suggestions else None
         dim = DimensionDetail(dim_name, score, level, first_s)
 
-        return DiagnosisReport(
-            overall_level=level,
-            overall_score=score,
-            dimensions=[dim],
-            suggestions=suggestions,
-        )
+        return DiagnosisReport(overall_level=level, overall_score=score,
+                               dimensions=[dim], suggestions=suggestions)
