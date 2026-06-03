@@ -1,4 +1,4 @@
-# 复合诊断策略 — 加权聚合多个子策略 (P1)
+# 复合诊断策略 — 加权聚合多个子策略
 # 持有多个 (DiagnosticStrategy, 权重) 元组
 # diagnose() 时运行全部子策略，加权计算综合分
 from models.transaction import Transaction
@@ -20,32 +20,26 @@ class CompositeDiagnosis(DiagnosticStrategy):
     """
 
     def __init__(self, strategies: list[tuple[DiagnosticStrategy, float]]):
-        """
-        strategies: [(策略实例, 权重), ...]
-        权重之和建议为 1.0
-        """
+        """strategies: [(策略实例, 权重), ...]，权重之和建议为 1.0"""
         self._strategies = strategies
 
     def add_strategy(self, strategy: DiagnosticStrategy, weight: float):
         """动态添加子策略"""
         self._strategies.append((strategy, weight))
 
-    def diagnose(
-        self,
-        transactions: list[Transaction],
-        budgets: list[Budget]
-    ) -> DiagnosisReport:
-        # ----- 边界：无子策略 -----
+    def diagnose(self, transactions: list[Transaction],
+                 budgets: list[Budget]) -> DiagnosisReport:
+        # 边界：无子策略
         if not self._strategies:
             return DiagnosisReport(HealthLevel.HEALTHY, 100, [], [])
 
-        # ----- 运行全部子策略 -----
+        # 运行全部子策略
         reports_and_weights = []
         for strategy, weight in self._strategies:
             report = strategy.diagnose(transactions, budgets)
             reports_and_weights.append((report, weight))
 
-        # ----- 加权综合分 -----
+        # 加权综合分
         overall_score = sum(r.overall_score * w for r, w in reports_and_weights)
 
         # 综合等级映射
@@ -56,21 +50,20 @@ class CompositeDiagnosis(DiagnosticStrategy):
         else:
             overall_level = HealthLevel.CRITICAL
 
-        # ----- 汇总所有维度和建议 -----
+        # 汇总所有维度和建议
         all_dimensions = []
-        all_suggestions = []
         for r, w in reports_and_weights:
             all_dimensions.extend(r.dimensions)
-            all_suggestions.extend(r.suggestions)
 
-        # ----- 建议去重（同 category + 同 description 只保留一个）-----
+        # 建议去重（同 category + 同 description 只保留一个）
         seen = set()
         unique_suggestions = []
-        for s in all_suggestions:
-            key = (s.category, s.description)
-            if key not in seen:
-                seen.add(key)
-                unique_suggestions.append(s)
+        for s_list in [r.suggestions for r, w in reports_and_weights]:
+            for s in s_list:
+                key = (s.category, s.description)
+                if key not in seen:
+                    seen.add(key)
+                    unique_suggestions.append(s)
 
         return DiagnosisReport(
             overall_level=overall_level,

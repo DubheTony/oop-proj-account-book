@@ -18,8 +18,5 @@ class PercentageMethod(SavingsMethod):
         return SavingsPlan(
             weekly_amounts=[weekly] * 52,
             annual_total=annual,
-            description=(
-                f"每月储蓄收入的 {self.rate:.0%}（¥{monthly:.0f}），"
-                f"年累计 ¥{annual:.0f}。"
-            ),
+            description=f"每月储蓄收入的 {self.rate:.0%}（¥{monthly:.0f}），年累计 ¥{annual:.0f}。",
         )

@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView, QTextEdit, QPushButton,
     QLabel, QLineEdit, QComboBox, QRadioButton, QButtonGroup, QDialog,
-    QFormLayout, QDialogButtonBox, QMessageBox, QStatusBar, QGroupBox,
-    QSplitter, QAbstractItemView,
+    QFormLayout, QDialogButtonBox, QMessageBox, QGroupBox,
+    QAbstractItemView,
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
@@ -19,14 +19,14 @@ from models.diagnosis_report import HealthLevel
 from services import FinanceController
 from services.category_normalizer import STANDARD_CATEGORIES
 
-# ---------- 全局控制器 + 启动时加载持久化数据 ----------
+# ====== 全局控制器 + 启动时加载持久化数据 ======
 ctrl = FinanceController()
 
 _script_dir = Path(__file__).parent
 _settings_path = _script_dir / "app_settings.json"
 _transactions_path = _script_dir / "transactions.json"
 
-# 加载设置（预算 + 储蓄目标，自动迁移旧 budgets.json）
+# 加载设置（预算 + 储蓄目标）
 _startup_log = []
 try:
     ctrl.load_settings(str(_settings_path))
@@ -34,7 +34,7 @@ try:
 except Exception as _e:
     _startup_log.append(f"设置加载失败({_e})")
 
-# 加载交易记录（优先于 CSV，避免重复解析）
+# 加载交易记录（优先于CSV，避免重复解析）
 try:
     _txn_count = ctrl.load_transactions(str(_transactions_path))
     if _txn_count > 0:
@@ -53,7 +53,7 @@ try:
 except Exception as _e:
     _startup_log.append(f"交易加载失败({_e})")
 
-# 初始化诊断策略（含储蓄目标达成率）
+# 初始化诊断策略（4个子策略 + 复合加权聚合）
 from strategies import (
     SavingRateStrategy, CategoryOverrunStrategy,
     ConsumptionStructureStrategy, SavingsGoalStrategy, CompositeDiagnosis,
@@ -76,12 +76,11 @@ from methods.week52 import Week52Method
 from methods.percentage import PercentageMethod
 
 
-# ================================================================
-# 对话框
-# ================================================================
+# ====== 对话框 ======
 
 class AddTransactionDialog(QDialog):
     """添加交易对话框"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("添加交易")
@@ -126,12 +125,13 @@ class AddTransactionDialog(QDialog):
         except ValueError as e:
             QMessageBox.critical(self, "格式错误", str(e))
 
-    def get_transaction(self) -> Transaction:
+    def get_transaction(self):
         return self._result
 
 
 class SetBudgetDialog(QDialog):
     """设置预算对话框"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("设置预算")
@@ -161,13 +161,11 @@ class SetBudgetDialog(QDialog):
         self._result = Budget(cat, limit)
         self.accept()
 
-    def get_budget(self) -> Budget:
+    def get_budget(self):
         return self._result
 
 
-# ================================================================
-# Tab 页
-# ================================================================
+# ====== Tab 页 ======
 
 class TransactionTab(QWidget):
     """交易管理 Tab"""
@@ -177,7 +175,7 @@ class TransactionTab(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
 
-        # 表格
+        # 交易表格
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["日期", "类型", "类别", "金额", "账户", "备注"])
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
@@ -228,7 +226,6 @@ class TransactionTab(QWidget):
             return
         try:
             count = ctrl.import_csv(path)
-            # 导入后自动保存到 JSON，下次启动直接加载
             _save_transactions()
             QMessageBox.information(self, "导入完成", f"成功导入 {count} 条交易")
             self.refresh()
@@ -259,7 +256,8 @@ class TransactionTab(QWidget):
 
 
 class BudgetTab(QWidget):
-    """预算管理 Tab — 表格直接编辑，平铺式预算设置"""
+    """预算管理 Tab — 表格直接编辑 + 预算规则"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -291,7 +289,7 @@ class BudgetTab(QWidget):
         self.summary_label.setStyleSheet("font-weight: bold; padding: 4px; color: #333;")
         layout.addWidget(self.summary_label)
 
-        # 预算规则区：月收入 → 规则选择 → 两个应用按钮
+        # 预算规则区：月收入 → 规则选择 → 应用按钮
         rule_group = QGroupBox("预算规则")
         rule_layout = QHBoxLayout(rule_group)
 
@@ -323,10 +321,6 @@ class BudgetTab(QWidget):
 
         rule_layout.addStretch()
         layout.addWidget(rule_group)
-
-    # ================================================================
-    # 表格编辑
-    # ================================================================
 
     def refresh(self, month=None):
         if month is None:
@@ -361,7 +355,7 @@ class BudgetTab(QWidget):
             else:
                 self.summary_label.setText(
                     f"预算总额: ¥{total_limit:.0f}  |  月收入: ¥{income:.0f}  |  "
-                    f"!! 超额: ¥{surplus:+.0f} 预算已超月收入 !! "
+                    f"!! 超额: ¥{surplus:+.0f} 预算已超月收入 !!"
                 )
         else:
             self.summary_label.setText(
@@ -370,9 +364,7 @@ class BudgetTab(QWidget):
 
     def _on_cell_changed(self, row, col):
         """双击编辑限额后自动同步到 controller 并保存"""
-        if self._updating_table:
-            return
-        if col != 1:  # 只处理"月度限额"列
+        if self._updating_table or col != 1:  # 只处理"月度限额"列
             return
         try:
             cat_item = self.table.item(row, 0)
@@ -386,7 +378,7 @@ class BudgetTab(QWidget):
             ctrl.set_budget(Budget(cat, limit))
             _save_settings()
         except ValueError:
-            pass  # 非法输入，refresh 会恢复
+            pass
 
     def _add_budget_row(self):
         """在表格末尾添加一行待编辑的预算"""
@@ -426,15 +418,8 @@ class BudgetTab(QWidget):
         _save_settings()
         self.refresh()
 
-    # ================================================================
-    # 预算规则
-    # ================================================================
-
-    def _apply_rule(self, method: str = "503020"):
-        """
-        method="503020": 按 50/30/20 规则分配
-        method="fixed":   采用固定预算默认值
-        """
+    def _apply_rule(self, method="503020"):
+        """应用预算规则：503020 或 fixed"""
         try:
             income = float(self.income_edit.text().strip())
         except ValueError:
@@ -448,8 +433,7 @@ class BudgetTab(QWidget):
             for cat, lim in [("餐饮", 1200), ("交通", 200),
                              ("学习", 300), ("数码电子", 200), ("个人护理", 150),
                              ("家居日用", 300), ("运动户外", 200), ("服饰配饰", 150),
-                             ("医疗健康", 100), ("娱乐", 300),
-                             ("其他", 100)]:
+                             ("医疗健康", 100), ("娱乐", 300), ("其他", 100)]:
                 rule.set_budget(cat, lim)
             ctrl.set_budget_rule(rule)
 
@@ -467,7 +451,6 @@ class BudgetTab(QWidget):
                 )
                 if reply == QMessageBox.No:
                     return
-            # 直接应用，不再弹窗（表格已平铺可见）
             for cat, amt in result.items():
                 if cat != "储蓄":
                     ctrl.set_budget(Budget(cat, amt))
@@ -479,6 +462,7 @@ class BudgetTab(QWidget):
 
 class DiagnosisTab(QWidget):
     """诊断报告 Tab"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -502,20 +486,20 @@ class DiagnosisTab(QWidget):
             self.text.append("(暂无交易数据，请先导入CSV或录入交易)")
             return
 
-        # 健壮的月份选择：优先传入，其次当前选中，最后最新月份
+        # 月份选择：优先传入，其次当前选中，最后最新月份
         if month is None:
             month = _get_current_month()
         if not month or month not in months:
-            month = months[-1]  # 兜底：使用最新有数据的月份
+            month = months[-1]
 
         self.text.append(f"诊断月份: {month}")
-        # 检查该月是否有交易数据
         txns_check = ctrl.get_transactions(month)
         if not txns_check:
             self.text.append(f"(注意: 月份 {month} 暂无交易记录，诊断结果仅供参考)")
             self.text.append("=" * 60)
-            return  # 无数据直接返回，不跑诊断
-        # 检查数据是否过于稀疏（不足5笔或总支出<¥100，诊断参考价值低）
+            return
+
+        # 检查数据是否过于稀疏
         expense_total = sum(t.amount for t in txns_check if t.is_expense())
         income_total = sum(t.amount for t in txns_check if t.is_income())
         if len(txns_check) < 5 or expense_total < 100:
@@ -524,6 +508,7 @@ class DiagnosisTab(QWidget):
                 f"收入 ¥{income_total:.0f}，数据量不足以支撑可靠诊断，以下结果仅供参考)"
             )
         self.text.append("=" * 60)
+
         try:
             report = ctrl.generate_diagnosis(month)
         except RuntimeError as e:
@@ -558,13 +543,14 @@ class DiagnosisTab(QWidget):
 
 
 class SavingsTab(QWidget):
-    """储蓄管理 Tab"""
+    """储蓄管理 Tab — 储蓄倒推 + 储蓄方法选择"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
 
-        # 储蓄目标倒推
-        goal_group = QGroupBox("储蓄目标倒推（P0）")
+        # ==== 储蓄目标倒推（P0）====
+        goal_group = QGroupBox("储蓄目标倒推")
         goal_layout = QVBoxLayout(goal_group)
 
         goal_input = QHBoxLayout()
@@ -589,8 +575,8 @@ class SavingsTab(QWidget):
         goal_layout.addWidget(self.goal_text)
         layout.addWidget(goal_group)
 
-        # 储蓄方法
-        method_group = QGroupBox("储蓄方法选择（P1）")
+        # ==== 储蓄方法选择（P1）====
+        method_group = QGroupBox("储蓄方法选择")
         method_layout = QVBoxLayout(method_group)
 
         method_input = QHBoxLayout()
@@ -648,7 +634,7 @@ class SavingsTab(QWidget):
         method_layout.addWidget(self.method_text)
         layout.addWidget(method_group)
 
-        self._update_method_desc()  # 初始显示
+        self._update_method_desc()
 
     def _run_goal(self):
         self.goal_text.clear()
@@ -693,34 +679,30 @@ class SavingsTab(QWidget):
             param = float(self.method_param.text().strip() or "0")
             income = float(self.saving_income.text().strip() or "0")
         except ValueError:
-            param = 0.0
-            income = 0.0
+            param, income = 0.0, 0.0
+
         if method_id == 0:  # 固定金额
             annual = param * 12
             weekly = annual / 52
             self.method_desc_label.setText(
-                f"固定金额法：每月存 ¥{param:.0f} → 年总额 ¥{annual:.0f}"
-                f"（52周均分，每周 ¥{weekly:.0f}）"
+                f"固定金额法：每月存 ¥{param:.0f} → 年总额 ¥{annual:.0f}（52周均分，每周 ¥{weekly:.0f}）"
             )
         elif method_id == 1:  # 52周递增
-            annual = param * 1378  # base × (1+2+...+52) = base × 1378
+            annual = param * 1378
             self.method_desc_label.setText(
-                f"52周递增法：基数 ¥{param:.0f}，第N周存 N×¥{param:.0f}"
-                f" → 年总额 ¥{param:.0f}×1378=¥{annual:.0f}"
+                f"52周递增法：基数 ¥{param:.0f}，第N周存 N×¥{param:.0f} → 年总额 ¥{annual:.0f}"
             )
         elif method_id == 2:  # 52周递减
             annual = param * 1378
             self.method_desc_label.setText(
-                f"52周递减法：基数 ¥{param:.0f}，第1周存 ¥{param*52:.0f}"
-                f" 递减至第52周 ¥{param:.0f} → 年总额 ¥{annual:.0f}"
+                f"52周递减法：基数 ¥{param:.0f}，第1周存 ¥{param*52:.0f} 递减至第52周 ¥{param:.0f} → 年总额 ¥{annual:.0f}"
             )
         elif method_id == 3:  # 收入%
             rate = param / 100.0
             monthly = income * rate
             annual = monthly * 12
             self.method_desc_label.setText(
-                f"收入百分比法：每月存收入的 {param:.0f}%（¥{monthly:.0f}）"
-                f" → 年总额 ¥{annual:.0f}"
+                f"收入百分比法：每月存收入的 {param:.0f}%（¥{monthly:.0f}）→ 年总额 ¥{annual:.0f}"
             )
 
     def _run_method(self):
@@ -751,7 +733,7 @@ class SavingsTab(QWidget):
             self.method_text.append(f"计算失败: {e}")
             return
 
-        # 将月度储蓄目标同步到 controller，供诊断使用
+        # 将月度储蓄目标同步到 controller
         ctrl.set_savings_target(plan.annual_total / 12)
         _save_settings()
 
@@ -775,6 +757,7 @@ class SavingsTab(QWidget):
 
 class AlertTab(QWidget):
     """预警消息 Tab"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -818,9 +801,7 @@ class AlertTab(QWidget):
         self.refresh()
 
 
-# ================================================================
-# 主窗口
-# ================================================================
+# ====== 主窗口 ======
 
 # 模块级变量，供 Tab 页获取当前选中月份
 def _get_current_month():
@@ -828,11 +809,11 @@ def _get_current_month():
     return m if m else None
 
 def _save_settings():
-    """将所有设置持久化到 app_settings.json（预算 + 储蓄目标等）"""
+    """将所有设置持久化到 app_settings.json"""
     try:
         ctrl.save_settings(str(_settings_path))
     except Exception:
-        pass  # 静默失败，不影响主流程
+        pass
 
 def _save_transactions():
     """将交易记录持久化到 transactions.json"""
@@ -847,7 +828,7 @@ current_month = lambda: None
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("个人财务管理系统 — PySide6 图形化检查")
+        self.setWindowTitle("个人财务管理系统")
         self.resize(1100, 750)
         self.setMinimumSize(900, 600)
 
@@ -916,9 +897,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"当前月份: {month}")
 
 
-# ================================================================
-# 启动
-# ================================================================
+# ====== 启动 ======
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

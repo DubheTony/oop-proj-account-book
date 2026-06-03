@@ -14,13 +14,10 @@ class FixedAmountMethod(SavingsMethod):
                   history: list[Transaction]) -> SavingsPlan:
         annual = self.monthly_amount * 12
         weekly = annual / 52
-        return SavingsPlan(
-            weekly_amounts=[weekly] * 52,
-            annual_total=annual,
-            description=(
-                f"每月固定储蓄 ¥{self.monthly_amount:.0f}，年累计 ¥{annual:.0f}。"
-                f"占月收入 {self.monthly_amount / monthly_income:.0%}。"
-            ) if monthly_income > 0 else (
-                f"每月固定储蓄 ¥{self.monthly_amount:.0f}，年累计 ¥{annual:.0f}。"
-            ),
-        )
+        if monthly_income > 0:
+            desc = (f"每月固定储蓄 ¥{self.monthly_amount:.0f}，年累计 ¥{annual:.0f}。"
+                    f"占月收入 {self.monthly_amount / monthly_income:.0%}。")
+        else:
+            desc = f"每月固定储蓄 ¥{self.monthly_amount:.0f}，年累计 ¥{annual:.0f}。"
+        return SavingsPlan(weekly_amounts=[weekly] * 52,
+                           annual_total=annual, description=desc)
