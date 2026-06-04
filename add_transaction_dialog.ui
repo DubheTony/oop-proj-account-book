@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AddTransactionDialog</class>
+ <widget class="QDialog" name="AddTransactionDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x><y>0</y>
+    <width>350</width>
+    <height>280</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>添加交易</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>350</width>
+    <height>0</height>
+   </size>
+  </property>
+  <layout class="QFormLayout" name="form_layout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="date_label">
+     <property name="text">
+      <string>日期 (YYYY-MM-DD):</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLineEdit" name="date_edit"/>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="amount_label">
+     <property name="text">
+      <string>金额:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QLineEdit" name="amount_edit"/>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="type_label">
+     <property name="text">
+      <string>类型:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QComboBox" name="type_combo">
+     <item>
+      <property name="text">
+       <string>支出</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>收入</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="cat_label">
+     <property name="text">
+      <string>类别:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QComboBox" name="cat_combo">
+     <property name="editable">
+      <bool>true</bool>
+     </property>
+     <!-- 类别项由代码从 STANDARD_CATEGORIES 动态填充 -->
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="acc_label">
+     <property name="text">
+      <string>账户:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QComboBox" name="acc_combo">
+     <item>
+      <property name="text">
+       <string>微信</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>支付宝</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>现金</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>银行卡</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="note_label">
+     <property name="text">
+      <string>备注:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QLineEdit" name="note_edit"/>
+   </item>
+   <item row="6" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="button_box">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

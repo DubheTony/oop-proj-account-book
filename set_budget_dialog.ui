@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SetBudgetDialog</class>
+ <widget class="QDialog" name="SetBudgetDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x><y>0</y>
+    <width>300</width>
+    <height>120</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>设置预算</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>300</width>
+    <height>0</height>
+   </size>
+  </property>
+  <layout class="QFormLayout" name="form_layout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="cat_label">
+     <property name="text">
+      <string>类别:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QComboBox" name="cat_combo">
+     <property name="editable">
+      <bool>true</bool>
+     </property>
+     <!-- 类别项由代码从 STANDARD_CATEGORIES 动态填充 -->
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="limit_label">
+     <property name="text">
+      <string>月度限额:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QLineEdit" name="limit_edit"/>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="button_box">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
