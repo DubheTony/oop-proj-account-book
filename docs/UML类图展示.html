@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人财务管理系统 — UML 类图</title>
+<style>
+:root {
+  --bg: #f2f7f2;
+  --card-bg: #fff;
+  --card-border: #d0e0d0;
+  --primary: #4a9c5d;
+  --primary-dark: #2d7d46;
+  --hover-bg: #eaf5ea;
+  --text: #2c3e2c;
+  --text-muted: #6b7f6b;
+  --gold: #c8943e;
+  --shadow: 0 2px 8px rgba(0,0,0,.05);
+  --shadow-lg: 0 6px 20px rgba(0,0,0,.10);
+  --radius: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI','Microsoft YaHei',sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* header */
+header {
+  text-align: center;
+  padding: 10px 20px 6px;
+  background: linear-gradient(135deg,#e8f5e8 0%,#d4ecd4 50%,#c8e6c8 100%);
+  border-bottom: 2px solid var(--primary-dark);
+  flex-shrink: 0;
+}
+header h1 { font-size: 1.3em; color: var(--primary-dark); letter-spacing: 1px; }
+
+/* page tabs */
+.page-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  background: #fff;
+  border-bottom: 2px solid #d0e0d0;
+  flex-shrink: 0;
+}
+.page-tab {
+  padding: 8px 32px;
+  border: none;
+  background: transparent;
+  font-size: .85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all .15s;
+  letter-spacing: .5px;
+}
+.page-tab:hover { color: var(--primary-dark); background: #f5faf5; }
+.page-tab.active {
+  color: var(--primary-dark);
+  border-bottom-color: var(--primary-dark);
+}
+
+/* page containers */
+.page { display: none; }
+.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+/* page 2 styles */
+.kp-main {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px 24px;
+}
+.kp-chapter {
+  margin-bottom: 20px;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.kp-chapter-header {
+  background: linear-gradient(135deg,#e8f5e8 0%,#d4ecd4 50%,#c8e6c8 100%);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.kp-chapter-header h3 {
+  font-size: .88em;
+  color: var(--primary-dark);
+  flex: 1;
+  margin: 0;
+}
+.kp-chapter-header .ch-badge {
+  font-size: .7em;
+  background: var(--primary-dark);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.kp-chapter-header .ch-arrow {
+  font-size: .75em;
+  color: var(--primary-dark);
+  transition: transform .2s;
+}
+.kp-chapter-header.collapsed .ch-arrow { transform: rotate(-90deg); }
+.kp-chapter-body { padding: 4px 0; }
+.kp-chapter-body.collapsed { display: none; }
+
+.kp-item {
+  border-bottom: 1px solid #f0f3f0;
+  padding: 10px 16px;
+}
+.kp-item:last-child { border-bottom: none; }
+.kp-item .kp-tag {
+  display: inline-block;
+  font-size: .64em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.kp-tag.tag-ch1 { background: #e3f2fd; color: #1565c0; }
+.kp-tag.tag-ch4 { background: #fce4ec; color: #c62828; }
+.kp-tag.tag-ch5 { background: #fff3e0; color: #e65100; }
+.kp-tag.tag-ch6 { background: #e8f5e9; color: #2e7d32; }
+.kp-tag.tag-ch7 { background: #f3e5f5; color: #6a1b9a; }
+.kp-tag.tag-ch8 { background: #e0f7fa; color: #006064; }
+.kp-tag.tag-ch9 { background: #fff8e1; color: #f57f17; }
+.kp-item .kp-name {
+  font-weight: 700;
+  font-size: .78em;
+  color: var(--text);
+  vertical-align: middle;
+}
+.kp-item .kp-desc {
+  font-size: .72em;
+  color: var(--text-muted);
+  margin: 4px 0 4px 0;
+  line-height: 1.5;
+}
+.kp-item .kp-file {
+  font-size: .64em;
+  color: var(--primary);
+  font-family: 'Consolas','Courier New',monospace;
+  background: #f5f8f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+.kp-item .kp-code {
+  font-family: 'Consolas','Courier New',monospace;
+  font-size: .66em;
+  background: #f8faf8;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border-left: 3px solid #c0d0c0;
+  margin: 4px 0;
+  white-space: pre-wrap;
+  color: #4a5a4a;
+  line-height: 1.35;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* VSCode open buttons */
+.kp-open-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.kp-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  font-size: .68em;
+  font-family: 'Segoe UI','Microsoft YaHei',sans-serif;
+  background: #e8f0e8;
+  color: var(--primary-dark);
+  border: 1px solid #c0d0c0;
+  border-radius: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.kp-open-btn:hover {
+  background: var(--primary-dark);
+  color: #fff;
+  border-color: var(--primary-dark);
+}
+.kp-open-btn .btn-icon {
+  font-size: .9em;
+}
+.kp-open-btn .btn-lines {
+  font-size: .8em;
+  color: var(--text-muted);
+  margin-left: 1px;
+}
+.kp-open-btn:hover .btn-lines {
+  color: rgba(255,255,255,.7);
+}
+
+/* filter bar */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 20px;
+  background: #fff;
+  border-bottom: 1px solid #d0e0d0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.filter-bar .flabel { font-size: .76em; color: var(--text-muted); margin-right: 2px; font-weight: 600; }
+.filter-btn {
+  padding: 3px 13px;
+  border: 1.5px solid #c0d0c0;
+  border-radius: 13px;
+  background: #fff;
+  color: var(--text);
+  font-size: .74em;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.filter-btn:hover { background: var(--hover-bg); }
+.filter-btn.active { background: var(--primary-dark); color: #fff; border-color: var(--primary-dark); }
+
+/* division overview — compact bar */
+.division-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 5px 20px;
+  background: #f8faf8;
+  border-bottom: 1px solid #e0e8e0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  font-size: .72em;
+  color: var(--text-muted);
+}
+.division-bar .div-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: .85em;
+  color: #fff;
+}
+.division-bar .div-tag.tag-A { background: #2d7d46; }
+.division-bar .div-tag.tag-B { background: #5a8f6a; }
+.division-bar .div-tag.tag-C { background: #8aac8a; }
+.division-bar .div-tag.tag-D { background: #4a9c5d; }
+.division-bar .div-tag.tag-E { background: #c8943e; }
+.division-bar span { white-space: nowrap; }
+
+/* main */
+main {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 16px 24px;
+}
+
+/* controller row */
+.controller-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* groups grid — 6 logical columns */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  min-width: 1100px;
+}
+.group-col { display: flex; flex-direction: column; gap: 5px; }
+.group-title {
+  text-align: center;
+  font-size: .73em;
+  font-weight: 700;
+  color: var(--primary-dark);
+  padding: 4px 6px;
+  background: #e8f5e8;
+  border-radius: 5px;
+  white-space: nowrap;
+  letter-spacing: .3px;
+}
+.group-subtitle {
+  text-align: center;
+  font-size: .66em;
+  color: var(--text-muted);
+  margin-top: -3px;
+  margin-bottom: 2px;
+}
+
+/* cards */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  position: relative;
+  transition: transform .15s, box-shadow .15s, border-color .15s, opacity .3s;
+  border-left: 4px solid #b0c0b0;
+  user-select: none;
+}
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.card.dimmed { opacity: .35; pointer-events: none; }
+.card.highlight {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 2px rgba(200,148,62,.25);
+}
+.card.selected {
+  border-color: var(--primary-dark) !important;
+  box-shadow: 0 0 0 3px rgba(45,125,70,.3);
+}
+.card .card-name { font-weight: 700; font-size: .8em; color: var(--text); margin-bottom: 1px; }
+.card .card-cn { font-size: .7em; color: var(--text-muted); margin-bottom: 2px; }
+.card .card-badge {
+  display: inline-block;
+  font-size: .62em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-weight: 600;
+}
+
+.card.type-interface { border-left-color: var(--primary); }
+.card.type-interface .card-badge { background: #e8f5e8; color: var(--primary-dark); }
+.card.type-abstract { border-left-color: var(--primary); }
+.card.type-abstract .card-badge { background: #e8f5e8; color: var(--primary-dark); }
+.card.type-enum { border-left-color: var(--gold); }
+.card.type-enum .card-badge { background: #fef9ee; color: #a07820; }
+.card.type-class { border-left-color: #b0c0b0; }
+.card.type-class .card-badge { background: #f0f3f0; color: var(--text-muted); }
+.card.type-controller { border-left-color: var(--primary-dark); background: #fafffa; }
+.card.type-controller .card-badge { background: #d4ecd4; color: var(--primary-dark); }
+
+.card.sub-card { margin-left: 8px; border-left-width: 3px; }
+.card.sub-card .card-name { font-size: .76em; }
+
+/* detail overlay */
+.detail-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,.15);
+  z-index: 1000;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 40px;
+}
+.detail-overlay.show { display: flex; }
+.detail-popup {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18);
+  width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  position: relative;
+  animation: slideIn .2s ease;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+.detail-popup .close-btn {
+  position: absolute;
+  top: 12px; right: 16px;
+  width: 30px; height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 1.3em;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background .15s;
+}
+.detail-popup .close-btn:hover { background: #f0f0f0; }
+.detail-popup h2 { font-size: 1.1em; color: var(--primary-dark); margin-bottom: 2px; }
+.detail-popup .cn-badge { font-size: .8em; color: var(--text-muted); margin-bottom: 6px; }
+.detail-popup .source-file {
+  font-size: .7em; color: var(--text-muted);
+  background: #f5f8f5; padding: 3px 8px; border-radius: 4px;
+  display: inline-block; margin-bottom: 8px;
+  font-family: 'Consolas','Courier New',monospace;
+}
+.detail-popup .desc { font-size: .78em; color: var(--text-muted); line-height: 1.5; margin-bottom: 6px; }
+.detail-popup .tip-box {
+  background: #fffde8; border-left: 3px solid var(--gold);
+  padding: 6px 10px; border-radius: 0 5px 5px 0;
+  font-size: .74em; color: #6b5a20; line-height: 1.5; margin-bottom: 8px;
+}
+.detail-popup h3 {
+  font-size: .8em; color: var(--primary);
+  margin: 10px 0 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #e0e8e0;
+}
+.detail-popup table {
+  width: 100%; border-collapse: collapse; font-size: .72em; margin-bottom: 5px;
+}
+.detail-popup th { background: #e8f5e8; color: var(--primary-dark); padding: 4px 7px; text-align: left; font-size: .85em; }
+.detail-popup td { padding: 3px 7px; border-bottom: 1px solid #f0f3f0; color: var(--text); }
+.detail-popup td.cn { color: var(--text-muted); }
+
+.detail-popup .method-row { border-bottom: 1px solid #f0f3f0; padding: 5px 0; }
+.detail-popup .method-sig { font-family:'Consolas','Courier New',monospace; font-size:.72em; color:var(--primary-dark); font-weight:600; }
+.detail-popup .method-desc { font-size:.72em; color:var(--text-muted); margin:2px 0; }
+.detail-popup .method-code {
+  font-family:'Consolas','Courier New',monospace;
+  font-size:.68em; background:#f5f8f5; padding:4px 8px; border-radius:4px;
+  margin:3px 0 0; white-space:pre-wrap; color:#4a5a4a; line-height:1.3;
+  max-height:100px; overflow-y:auto;
+}
+.detail-popup .class-code {
+  font-family:'Consolas','Courier New',monospace;
+  font-size:.7em; background:#f5f8f5; padding:6px 10px; border-radius:4px;
+  margin:4px 0; white-space:pre-wrap; color:#4a5a4a; line-height:1.3;
+  max-height:120px; overflow-y:auto;
+}
+
+.detail-popup .rel-link {
+  display: inline-block; margin: 2px 4px;
+  padding: 2px 8px; background: #f0f5f0;
+  border-radius: 10px; font-size: .74em; cursor: pointer;
+  transition: background .15s;
+  border: 1px solid #d0e0d0;
+}
+.detail-popup .rel-link:hover { background: #d4ecd4; }
+.detail-popup .rel-link .rel-type { color: var(--text-muted); font-size: .82em; margin-left: 2px; }
+
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#c0d0c0; border-radius:3px; }
+
+@media (max-width:1300px) {
+  .groups-grid { grid-template-columns: repeat(3,1fr); min-width:0; }
+}
+@media (max-width:750px) {
+  .groups-grid { grid-template-columns: repeat(2,1fr); min-width:0; }
+  .detail-popup { width:95vw; }
+}
+@media (max-width:500px) {
+  .groups-grid { grid-template-columns: 1fr; min-width:0; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>个人财务管理系统 — 面向对象大作业展示</h1>
+</header>
+
+<!-- page tabs -->
+<div class="page-tabs" id="pageTabs">
+  <button class="page-tab active" data-page="page1">UML 类图</button>
+  <button class="page-tab" data-page="page2">知识点与代码实现</button>
+</div>
+
+<!-- ============ PAGE 1: UML CLASS DIAGRAM ============ -->
+<div class="page active" id="page1">
+
+<!-- filter bar removed -->
+
+<!-- division overview removed -->
+
+<main id="diagramArea">
+  <div class="controller-row" id="controllerRow"></div>
+  <div class="groups-grid" id="groupsGrid"></div>
+</main>
+
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-popup" id="detailPopup"></div>
+</div>
+
+</div><!-- /page1 -->
+
+<!-- ============ PAGE 2: KNOWLEDGE POINTS ============ -->
+<div class="page" id="page2">
+
+<div class="kp-main">
+
+<!-- Chapter 1: OOP Basics & UML & Python Class Basics -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>面向对象简介与UML应用</h3>
+    <span class="ch-badge">17处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch1">四大概念</span><span class="kp-name">OOP四大核心概念（封装·抽象·继承·多态）</span>
+      <div class="kp-desc">贯穿整个项目。封装：FinanceController内部数据通过公开方法访问；抽象：三个策略接口隐藏实现细节；继承：所有策略子类继承ABC基类；多态：同一diagnose方法在不同策略中产生不同行为。</div>
+      <span class="kp-file">services/finance_controller.py · strategies/diagnostic_strategy.py · rules/budget_rule.py</span>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch1">封装-黑盒</span><span class="kp-name">数据与操作捆绑，隐藏内部实现</span>
+      <div class="kp-desc">FinanceController将交易数据(_transactions)、预算(_budgets)、预警(_alert_messages)全部设为私有属性，外部只能通过add_transaction()等方法操作，无法直接修改内部字典。</div>
+      <span class="kp-file">services/finance_controller.py:17-19</span>
+      <div class="kp-code">self._transactions = {}     # dict[str, list[Transaction]] 按月分组
+self._budgets = []          # 预算列表
+self._alert_messages = []   # 预警消息</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch1">继承-is-a</span><span class="kp-name">继承表达is-a关系</span>
+      <div class="kp-desc">SavingRateStrategy "是一个" DiagnosticStrategy，CategoryOverrunStrategy "是一个" DiagnosticStrategy。它们都继承同一个抽象基类，表达is-a关系。</div>
+      <span class="kp-file">strategies/saving_rate.py:11 · strategies/category_overrun.py:11</span>
+      <div class="kp-code">class SavingRateStrategy(DiagnosticStrategy):      # is-a 关系
+class CategoryOverrunStrategy(DiagnosticStrategy): # is-a 关系
+class Rule503020(BudgetRule):                      # is-a 关系</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch1">多态</span><span class="kp-name">同一接口不同实现</span>
+      <div class="kp-desc">Controller持有diagnosis_strategy引用(类型为DiagnosticStrategy)，调用同一个diagnose()方法，运行时根据实际注入的子类执行完全不同算法——SavingRateStrategy算储蓄率，CategoryOverrunStrategy查各类别超支。</div>
+      <span class="kp-file">services/finance_controller.py:231-256</span>
+      <div class="kp-code">def generate_diagnosis(self, month):
+    report = self.diagnosis_strategy.diagnose(txns, self._budgets)
+    # diagnosis_strategy可能是SavingRateStrategy/CategoryOverrunStrategy/CompositeDiagnosis等任意子类</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch1">UML类图</span><span class="kp-name">UML类图建模22个类及其关系</span>
+      <div class="kp-desc">本HTML第一页即为完整UML类图展示，包含6个逻辑分组（核心实体·诊断策略·诊断结果·预算规则·储蓄方法·储蓄倒推），体现类间继承、聚合、组合、依赖关系。</div>
+      <span class="kp-file">本文件第一页（UML类图展示.html）</span>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch1">__init__</span><span class="kp-name">__init__初始化对象属性</span>
+      <div class="kp-desc">每个类都通过__init__初始化实例属性。第一参数约定为self，调用时不需要手动传入。</div>
+      <span class="kp-file">models/transaction.py:17-24 · models/budget.py:7-10</span>
+      <div class="kp-code">class Transaction:
+    def __init__(self, amount: float, type: str, category: str,
+                 account: AccountType, date: date, note: str = ""):
+        self.amount = amount
+        self.type = type
+        self.category = category
+        self.account = account
+        self.date = date
+        self.note = note</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chapter 4: Encapsulation -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>面向对象封装</h3>
+    <span class="ch-badge">15处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch4">私有属性</span><span class="kp-name">单下划线_表示protected约定</span>
+      <div class="kp-desc">项目广泛使用单下划线前缀表示"不建议从外部访问"。如_transactions、_budgets、_strategies、_cut_ratios等，遵循Python命名约定而非强制访问控制。</div>
+      <span class="kp-file">services/finance_controller.py · strategies/composite.py:24 · rules/rule_503020.py:17-22</span>
+      <div class="kp-code">self._transactions = {}          # 内部字典，外部不应直接访问
+self._budgets = []               # 内部列表
+self._alert_messages = []        # 内部列表
+self._strategies = strategies    # CompositeDiagnosis内部</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch4">get/set</span><span class="kp-name">get/set模式保护私有属性</span>
+      <div class="kp-desc">FinanceController通过公开方法提供对私有数据的受控访问。get_transactions()返回副本防止外部修改内部列表，set_budget()在添加时做去重检查。</div>
+      <span class="kp-file">services/finance_controller.py:63-71 · 120-126</span>
+      <div class="kp-code">def get_transactions(self, month=None):
+    if month is not None:
+        return self._transactions.get(month, []).copy()  # 返回副本
+    # ...</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch4">模块导入</span><span class="kp-name">多种模块导入方式</span>
+      <div class="kp-desc">项目使用import A、from A import B等多种导入方式。Controller中CSV模块采用延迟导入（在方法内import），避免循环依赖。</div>
+      <span class="kp-file">services/finance_controller.py:1-9 · 57</span>
+      <div class="kp-code">import json
+from pathlib import Path
+from models.transaction import Transaction, AccountType
+# 延迟导入：在import_csv方法内
+from services.csv_importer import import_csv</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch4">docstring</span><span class="kp-name">docstring自文档化</span>
+      <div class="kp-desc">关键类和方法使用docstring记录用途和参数，用help()可查看。便于团队协作和答辩时快速理解代码。</div>
+      <span class="kp-file">strategies/diagnostic_strategy.py:8-18 · models/transaction.py:14-24</span>
+      <div class="kp-code">class DiagnosticStrategy(ABC):
+    """诊断策略抽象基类。
+    每个具体策略封装一种诊断算法。
+    diagnose() 不修改传入的 transactions/budgets，不依赖外部状态。
+    score 统一为 0~100，方便 Composite 加权聚合。
+    """</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chapter 5: Inheritance -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>面向对象继承</h3>
+    <span class="ch-badge">9处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch5">继承语法</span><span class="kp-name">Python继承语法 class Child(Parent)</span>
+      <div class="kp-desc">项目中所有策略类都通过继承语法从ABC基类派生。所有类隐式继承object。</div>
+      <span class="kp-file">strategies/saving_rate.py:11 · rules/rule_503020.py:9 · methods/week52.py</span>
+      <div class="kp-code">class DiagnosticStrategy(ABC):      # 继承ABC
+class SavingRateStrategy(DiagnosticStrategy):  # 继承DiagnosticStrategy
+class Rule503020(BudgetRule):       # 继承BudgetRule
+class FixedAmountMethod(SavingsMethod):  # 继承SavingsMethod</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch5">方法覆写</span><span class="kp-name">Overriding——子类改写父类方法</span>
+      <div class="kp-desc">每个具体策略都覆写了父类的抽象方法。SavingRateStrategy覆写diagnose()计算储蓄率，CategoryOverrunStrategy覆写diagnose()检测超支，Rule503020覆写allocate()按50/30/20分配。</div>
+      <span class="kp-file">strategies/saving_rate.py:19-81 · strategies/category_overrun.py:16-72</span>
+      <div class="kp-code"># DiagnosticStrategy定义抽象方法
+@abstractmethod
+def diagnose(self, transactions, budgets) -> DiagnosisReport: ...
+# SavingRateStrategy覆写
+def diagnose(self, transactions, budgets) -> DiagnosisReport:
+    total_income = sum(t.amount for t in transactions if t.is_income())
+    saving_rate = (total_income - total_expense) / total_income
+    # ...</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch5">组合模式</span><span class="kp-name">CompositeDiagnosis既是父类又持有父类列表</span>
+      <div class="kp-desc">CompositeDiagnosis继承DiagnosticStrategy（"是一个"），同时内部持有list[tuple[DiagnosticStrategy, float]]（"包含多个"）。这体现了组合模式——整体和部分共享同一接口。</div>
+      <span class="kp-file">strategies/composite.py:10-13</span>
+      <div class="kp-code">class CompositeDiagnosis(DiagnosticStrategy):  # 继承：是DiagnosticStrategy
+    def __init__(self, strategies: list[tuple[DiagnosticStrategy, float]]):
+        self._strategies = strategies  # 聚合：持有多个DiagnosticStrategy</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chapter 6: Polymorphism -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>面向对象多态</h3>
+    <span class="ch-badge">12处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch6">动态分派</span><span class="kp-name">运行时根据对象真实类型决定执行哪个方法</span>
+      <div class="kp-desc">Controller通过set_diagnosis_strategy()注入策略后，调用diagnose()时Python在运行时查找对象实际类型的方法——这是动态分派的核心。同一行代码，注入不同策略就执行不同算法。</div>
+      <span class="kp-file">services/finance_controller.py:227-256</span>
+      <div class="kp-code"># 注入策略
+controller.set_diagnosis_strategy(SavingRateStrategy())
+# 动态分派到 SavingRateStrategy.diagnose()
+report = controller.diagnosis_strategy.diagnose(txns, budgets)
+# 切换策略
+controller.set_diagnosis_strategy(CategoryOverrunStrategy())
+# 此时动态分派到 CategoryOverrunStrategy.diagnose()
+report = controller.diagnosis_strategy.diagnose(txns, budgets)</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch6">ABC</span><span class="kp-name">抽象基类（ABC + @abstractmethod）</span>
+      <div class="kp-desc">项目中三个策略族（DiagnosticStrategy、BudgetRule、SavingsMethod）全部使用ABC作为抽象基类，用@abstractmethod装饰抽象方法。子类若不实现抽象方法则无法实例化。</div>
+      <span class="kp-file">strategies/diagnostic_strategy.py:8-18 · rules/budget_rule.py:6-12 · methods/savings_method.py:8-13</span>
+      <div class="kp-code">from abc import ABC, abstractmethod
+
+class DiagnosticStrategy(ABC):
+    @abstractmethod
+    def diagnose(self, transactions, budgets) -> DiagnosisReport: ...
+
+class BudgetRule(ABC):
+    @abstractmethod
+    def allocate(self, income, history) -> dict[str, float]: ...
+
+class SavingsMethod(ABC):
+    @abstractmethod
+    def calculate(self, monthly_income, history) -> SavingsPlan: ...</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch6">策略模式</span><span class="kp-name">策略模式——三个完整的策略族</span>
+      <div class="kp-desc">项目在诊断、预算、储蓄三个模块均应用策略模式。每个模块定义一个ABC接口+多个具体实现。Controller持有接口引用，运行时注入具体策略。新增策略不影响现有代码（开闭原则）。</div>
+      <span class="kp-file">全部strategies/ · rules/ · methods/ 目录</span>
+      <div class="kp-code"># 诊断族: DiagnosticStrategy → SavingRateStrategy / CategoryOverrunStrategy / ConsumptionStructureStrategy / CompositeDiagnosis
+# 预算族: BudgetRule → FixedBudgetRule / Rule503020
+# 储蓄族: SavingsMethod → FixedAmountMethod / Week52Method / PercentageMethod</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch6">鸭子类型</span><span class="kp-name">依赖对象的方法而非类型</span>
+      <div class="kp-desc">generate_diagnosis()中调用的diagnose()不检查参数具体类型（虽用了类型提示），实际运行时只要传入的对象有diagnose方法即可工作。但项目使用ABC+类型提示提供了编译期和运行期的双重保障。</div>
+      <span class="kp-file">services/finance_controller.py:254</span>
+      <div class="kp-code">report = self.diagnosis_strategy.diagnose(txns, self._budgets)
+# 只要self.diagnosis_strategy有diagnose方法就能工作
+# 但用ABC确保所有子类都实现了正确签名的方法</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chapter 7: Data Structures -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>容器数据结构</h3>
+    <span class="ch-badge">10处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch7">字典</span><span class="kp-name">dict按月分组存储交易</span>
+      <div class="kp-desc">FinanceController用dict[str, list[Transaction]]结构按月组织交易数据，key为"YYYY-MM"格式字符串。按key哈希存取，支持键不存在时的默认值处理。</div>
+      <span class="kp-file">services/finance_controller.py:17 · 37-39</span>
+      <div class="kp-code">self._transactions = {}  # {"2025-03": [t1, t2], "2025-04": [...]}
+
+def add_transaction(self, t):
+    month_key = t.date.strftime("%Y-%m")
+    if month_key not in self._transactions:
+        self._transactions[month_key] = []
+    self._transactions[month_key].append(t)</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch7">列表推导</span><span class="kp-name">列表推导式简化数据统计</span>
+      <div class="kp-desc">多处使用列表推导式进行数据聚合。sum()配合生成器表达式统计收支总额，简洁高效。</div>
+      <span class="kp-file">strategies/saving_rate.py:22-23 · services/finance_controller.py:95-98</span>
+      <div class="kp-code">total_income = sum(t.amount for t in transactions if t.is_income())
+total_expense = sum(t.amount for t in transactions if t.is_expense())
+
+b.current_spent = sum(
+    t.amount for t in txns
+    if t.is_expense() and self._category_matches(t.category, b.category))</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch7">f-string</span><span class="kp-name">f-string格式化输出</span>
+      <div class="kp-desc">广泛使用f-string进行格式化输出，包含表达式计算（如{over:.0f}格式化金额、{ratio:.0%}格式化百分比）。</div>
+      <span class="kp-file">services/finance_controller.py:51-53 · strategies/saving_rate.py:50-67</span>
+      <div class="kp-code">f"[预警] {t.date} | {t.category} 预算超支！限额 ¥{b.monthly_limit:.0f}，已支出 ¥{b.current_spent:.0f}，超出 ¥{over:.0f}"
+
+f"储蓄率 {saving_rate:.0%}，接近健康线。建议提升至 {self.HEALTHY_THRESHOLD:.0%} 以上。"</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch7">列表sort</span><span class="kp-name">列表原地排序</span>
+      <div class="kp-desc">DiagnosisReport和MonthlyPlan构造时通过sort()按impact_amount降序排列建议，确保用户最先看到影响金额最大的建议。</div>
+      <span class="kp-file">models/diagnosis_report.py:36</span>
+      <div class="kp-code">self.suggestions.sort(key=lambda s: s.impact_amount, reverse=True)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chapter 8: File I/O -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>文件读写操作</h3>
+    <span class="ch-badge">3处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch8">JSON持久化</span><span class="kp-name">json.dump/load实现数据持久化</span>
+      <div class="kp-desc">FinanceController用json.dump()将交易和预算保存到JSON文件，用json.load()读取恢复。使用ensure_ascii=False保留中文，indent=2提高可读性。</div>
+      <span class="kp-file">services/finance_controller.py:143-221</span>
+      <div class="kp-code">def save_settings(self, path):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def load_transactions(self, path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    for month, txns in data.items():
+        for item in txns:
+            t = Transaction(amount=item["amount"], ...)</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch8">CSV解析</span><span class="kp-name">csv.reader解析微信/支付宝账单</span>
+      <div class="kp-desc">csv_importer模块使用csv.reader解析CSV文件。支持UTF-8-BOM（微信）和GBK（支付宝）两种编码。先读头部检测格式→定位表头行→逐行解析交易记录。一行坏数据不中断整个导入。</div>
+      <span class="kp-file">services/csv_importer.py:93-108 · 115-178</span>
+      <div class="kp-code">def import_csv(path):
+    fmt = _detect_format(path)  # 自动检测微信/支付宝格式
+    if fmt == "wechat":
+        return _import_wechat(path)
+    else:
+        return _import_alipay(path)
+
+# 微信解析
+with open(path, "r", encoding="utf-8-sig") as f:
+    reader = csv.reader(f)
+    header_row = _find_header_row(reader)
+    for i, row in enumerate(reader):
+        t_date = _parse_date(row[0].strip())
+        amount = _parse_amount(row[5].strip())
+        # ...构造Transaction</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch8">with open</span><span class="kp-name">with open()上下文管理器</span>
+      <div class="kp-desc">所有文件操作均使用with open()语法，确保文件在读写完成后自动关闭，即使发生异常也能安全释放文件资源。</div>
+      <span class="kp-file">services/finance_controller.py:150-151 · services/csv_importer.py:119-120</span>
+      <div class="kp-code">with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+
+with open(path, "r", encoding="utf-8-sig") as f:
+    reader = csv.reader(f)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chapter 9: Exception Handling -->
+<div class="kp-chapter">
+  <div class="kp-chapter-header collapsed" onclick="toggleChapter(this)">
+    <h3>程序异常处理</h3>
+    <span class="ch-badge">5处应用</span>
+    <span class="ch-arrow">▼</span>
+  </div>
+  <div class="kp-chapter-body collapsed">
+    <div class="kp-item">
+      <span class="kp-tag tag-ch9">try-except</span><span class="kp-name">CSV解析中的异常容错</span>
+      <div class="kp-desc">CSV导入中每行数据单独try-except包裹。一行解析失败（ValueError/KeyError/编码问题）只跳过该行，不中断整个导入。UnicodeDecodeError捕获编码探测中的失败尝试。</div>
+      <span class="kp-file">services/csv_importer.py:167-169 · 245-247</span>
+      <div class="kp-code">try:
+    t_date = _parse_date(raw_date)
+    amount = _parse_amount(raw_amount)
+    # ...构造Transaction
+except (ValueError, KeyError) as e:
+    skipped += 1
+    print(f"[CSV] 第{actual_row}行跳过: {e}")</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch9">raise</span><span class="kp-name">主动抛出RuntimeError</span>
+      <div class="kp-desc">Controller在策略未设置时主动raise RuntimeError提示调用方。这比返回None更能明确传达"使用方法错误"的语义。</div>
+      <span class="kp-file">services/finance_controller.py:236 · 268 · 281</span>
+      <div class="kp-code">def generate_diagnosis(self, month=None):
+    if self.diagnosis_strategy is None:
+        raise RuntimeError("诊断策略未设置。请先调用 set_diagnosis_strategy()")
+    # ...
+
+def apply_budget_rule(self, income):
+    if self.budget_rule is None:
+        raise RuntimeError("预算规则未设置。请先调用 set_budget_rule()")</div>
+    </div>
+    <div class="kp-item">
+      <span class="kp-tag tag-ch9">except多类型</span><span class="kp-name">捕获多种异常类型</span>
+      <div class="kp-desc">CSV编码探测中依次尝试UTF-8-BOM→GBK→UTF-8，用except UnicodeDecodeError逐个捕获编码失败。同时捕获(ValueError, KeyError)处理数据解析异常。</div>
+      <span class="kp-file">services/csv_importer.py:25-53</span>
+      <div class="kp-code">try:
+    with open(path, "r", encoding="utf-8-sig") as f:
+        head = "".join(f.readline() for _ in range(6))
+    if "微信支付账单明细" in head:
+        return "wechat"
+except UnicodeDecodeError:
+    pass  # 尝试下一个编码</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /kp-main -->
+</div><!-- /page2 -->
+
+<script>
+// ================================================================
+// DATA — 22 classes, 6 logical groups, A-E division mapping
+// ================================================================
+const classes = {
+
+  FinanceController: {
+    id:'FinanceController', nameCN:'总控制器', type:'controller',
+    group:'controller', division:'A',
+    sourceFile:'services/finance_controller.py',
+    attributes:[
+      {name:'_transactions',type:'dict[str,list[Transaction]]',descCN:'按月分组交易'},
+      {name:'_budgets',type:'list[Budget]',descCN:'预算列表'},
+      {name:'_alert_messages',type:'list[str]',descCN:'预警消息'},
+      {name:'diagnosis_strategy',type:'DiagnosticStrategy|None',descCN:'诊断策略(可切换)'},
+      {name:'budget_rule',type:'BudgetRule|None',descCN:'预算规则(可切换)'},
+      {name:'savings_method',type:'SavingsMethod|None',descCN:'储蓄方法(可切换)'}
+    ],
+    methods:[
+      {sig:'add_transaction(t)',ret:'void',descCN:'保存交易，按月分组；支出自动更新预算并检测超支',
+       code:'month_key = t.date.strftime("%Y-%m")\nself._transactions[month_key].append(t)\nif t.is_expense():\n    b = self._find_budget(t.category)\n    b.add_expense(t.amount)\n    if not was_exceeded and b.is_exceeded():\n        self._alert_messages.append(f"[预警] ...")'},
+      {sig:'import_csv(path)',ret:'int',descCN:'委托csv_importer模块解析CSV文件，返回导入条数',
+       code:'from services.csv_importer import import_csv\ntransactions, skipped = import_csv(path)\nfor t in transactions:\n    self.add_transaction(t)\nreturn len(transactions)'},
+      {sig:'generate_diagnosis(month)',ret:'DiagnosisReport',descCN:'根据当月交易重算预算已支出，委托诊断策略执行',
+       code:'for b in self._budgets:\n    b.current_spent = sum(t.amount for t in txns\n        if t.is_expense() and self._category_matches(t.category, b.category))\nreport = self.diagnosis_strategy.diagnose(txns, self._budgets)'},
+      {sig:'apply_budget_rule(income)',ret:'dict',descCN:'委托BudgetRule计算各类别建议预算',
+       code:'return self.budget_rule.allocate(income, self.get_transactions())'},
+      {sig:'get_savings_plan(income)',ret:'SavingsPlan',descCN:'委托SavingsMethod生成储蓄方案',
+       code:'return self.savings_method.calculate(income, self.get_transactions())'},
+      {sig:'generate_saving_plan(target,months)',ret:'MonthlyPlan',descCN:'委托SavingGoalCalculator倒推',
+       code:'calc = self._get_saving_calculator()\nreturn calc.calculate_plan(target, months, self.get_transactions())'},
+      {sig:'set_diagnosis_strategy(s)',ret:'void',descCN:'切换诊断策略（运行时注入）',code:'self.diagnosis_strategy = s'},
+      {sig:'set_budget_rule(r)',ret:'void',descCN:'切换预算规则（运行时注入）',code:'self.budget_rule = r'},
+      {sig:'set_savings_method(m)',ret:'void',descCN:'切换储蓄方法（运行时注入）',code:'self.savings_method = m'}
+    ],
+    desc:'系统统一对外入口。持有全部数据，串联所有模块。界面层仅通过Controller访问功能与数据。三个策略族通过set方法动态注入，新增模块不影响现有接口。',
+    tip:'Controller持有三个策略引用，类型均为抽象基类。运行时任意替换具体实现（如FixedBudgetRule换成Rule503020），无需改动Controller内部逻辑。体现了依赖倒置原则。',
+    relations:[
+      {target:'Transaction',type:'association',label:'manages',descCN:'管理交易'},
+      {target:'Budget',type:'association',label:'manages',descCN:'管理预算'},
+      {target:'DiagnosticStrategy',type:'dependency',label:'uses',descCN:'调用诊断'},
+      {target:'BudgetRule',type:'dependency',label:'uses',descCN:'调用预算规则'},
+      {target:'SavingsMethod',type:'dependency',label:'uses',descCN:'调用储蓄方法'},
+      {target:'SavingGoalCalculator',type:'dependency',label:'uses',descCN:'调用倒推计算'}
+    ]
+  },
+
+  // ── 组1: 核心实体层 (C) ──
+  Transaction: {
+    id:'Transaction', nameCN:'交易记录', type:'class', group:'entity', division:'C',
+    sourceFile:'models/transaction.py',
+    code:'class Transaction:\n    def __init__(self, amount: float, type: str,\n                 category: str, account: AccountType,\n                 date: date, note: str = ""):\n        self.amount = amount\n        self.type = type        # "收入" | "支出"\n        self.category = category\n        self.account = account\n        self.date = date\n        self.note = note',
+    attributes:[
+      {name:'amount',type:'float',descCN:'金额'},
+      {name:'type',type:'str',descCN:'"收入"或"支出"'},
+      {name:'category',type:'str',descCN:'类别(餐饮/交通/娱乐等)'},
+      {name:'account',type:'AccountType',descCN:'支付账户'},
+      {name:'date',type:'date',descCN:'交易日期'},
+      {name:'note',type:'str',descCN:'备注'}
+    ],
+    methods:[
+      {sig:'is_expense()',ret:'bool',descCN:'判断是否支出',code:'return self.type == "支出"'},
+      {sig:'is_income()',ret:'bool',descCN:'判断是否收入',code:'return self.type == "收入"'}
+    ],
+    desc:'单笔交易的数据载体。所有诊断、预算、储蓄计算均围绕Transaction展开，是系统核心的数据单元。纯数据类，不含业务逻辑。',
+    relations:[
+      {target:'AccountType',type:'dependency',label:'uses',descCN:'使用账户类型枚举'}
+    ]
+  },
+  Budget: {
+    id:'Budget', nameCN:'预算', type:'class', group:'entity', division:'C',
+    sourceFile:'models/budget.py',
+    code:'class Budget:\n    def __init__(self, category: str,\n                 monthly_limit: float,\n                 current_spent: float = 0.0):\n        self.category = category\n        self.monthly_limit = monthly_limit\n        self.current_spent = current_spent',
+    attributes:[
+      {name:'category',type:'str',descCN:'预算类别'},
+      {name:'monthly_limit',type:'float',descCN:'月度限额'},
+      {name:'current_spent',type:'float',descCN:'当月已支出'}
+    ],
+    methods:[
+      {sig:'is_exceeded()',ret:'bool',descCN:'是否超支',code:'return self.current_spent > self.monthly_limit'},
+      {sig:'get_remaining()',ret:'float',descCN:'剩余额度',code:'return self.monthly_limit - self.current_spent'},
+      {sig:'add_expense(amount)',ret:'void',descCN:'累加当月支出',code:'self.current_spent += amount'}
+    ],
+    desc:'单个类别的月度预算追踪。Controller在每次add_transaction时自动更新current_spent并检测超支预警。',
+    relations:[]
+  },
+  AccountType: {
+    id:'AccountType', nameCN:'账户类型', type:'enum', group:'entity', division:'C',
+    sourceFile:'models/transaction.py',
+    code:'class AccountType(Enum):\n    WECHAT = "微信"\n    ALIPAY = "支付宝"\n    CASH = "现金"\n    BANK_CARD = "银行卡"',
+    attributes:[
+      {name:'WECHAT',type:'="微信"',descCN:'微信支付'},
+      {name:'ALIPAY',type:'="支付宝"',descCN:'支付宝'},
+      {name:'CASH',type:'="现金"',descCN:'现金'},
+      {name:'BANK_CARD',type:'="银行卡"',descCN:'银行卡'}
+    ],
+    methods:[],
+    desc:'支付账户枚举。Python Enum实现，枚举值关联中文显示名。',
+    relations:[]
+  },
+
+  // ── 组2: 诊断策略族 (D) ──
+  DiagnosticStrategy: {
+    id:'DiagnosticStrategy', nameCN:'诊断策略接口', type:'abstract', group:'diag-strategy', division:'D',
+    sourceFile:'strategies/diagnostic_strategy.py',
+    code:'class DiagnosticStrategy(ABC):\n    @abstractmethod\n    def diagnose(self,\n        transactions: list[Transaction],\n        budgets: list[Budget]\n    ) -> DiagnosisReport:\n        ...',
+    attributes:[],
+    methods:[
+      {sig:'diagnose(transactions,budgets)',ret:'DiagnosisReport',descCN:'执行诊断，返回报告（抽象方法）',
+       code:'@abstractmethod\ndef diagnose(self, transactions: list[Transaction],\n             budgets: list[Budget]) -> DiagnosisReport:\n    ...'}
+    ],
+    desc:'诊断策略抽象基类。定义diagnose签名，不实现具体算法。策略模式的核心——把"做什么"和"怎么做"分开。',
+    tip:'策略模式入口：新增诊断维度只需增加DiagnosticStrategy子类，不改已有代码。体现了开闭原则。',
+    relations:[
+      {target:'DiagnosisReport',type:'dependency',label:'returns',descCN:'返回诊断报告'}
+    ]
+  },
+  SavingRateStrategy: {
+    id:'SavingRateStrategy', nameCN:'储蓄率诊断', type:'class', group:'diag-strategy', division:'D',
+    sourceFile:'strategies/saving_rate.py',
+    attributes:[
+      {name:'HEALTHY_THRESHOLD',type:'=0.20',descCN:'健康线'},
+      {name:'WARNING_THRESHOLD',type:'=0.10',descCN:'预警线'},
+      {name:'TARGET_RATE',type:'=0.30',descCN:'满分线'}
+    ],
+    methods:[
+      {sig:'diagnose(transactions,budgets)',ret:'DiagnosisReport',descCN:'储蓄率=(收入-支出)/收入，与阈值比较定级',
+       code:'total_income = sum(t.amount for t in transactions if t.is_income())\ntotal_expense = sum(t.amount for t in transactions if t.is_expense())\nsaving_rate = (total_income - total_expense) / total_income\nscore = max(0, min(saving_rate / self.TARGET_RATE * 100, 100))\n# >=20% HEALTHY, >=10% WARNING, else CRITICAL\n# impact_amount = 达到健康线还需多存的数额'}
+    ],
+    desc:'储蓄率诊断：月结余占比低于20%触发预警，入不敷出判CRITICAL。影响金额=达到健康线还需多存的数额。',
+    relations:[]
+  },
+  CategoryOverrunStrategy: {
+    id:'CategoryOverrunStrategy', nameCN:'类别超支诊断', type:'class', group:'diag-strategy', division:'D',
+    sourceFile:'strategies/category_overrun.py',
+    attributes:[
+      {name:'CRITICAL_OVERRUN',type:'=0.30',descCN:'超支30%为严重'}
+    ],
+    methods:[
+      {sig:'diagnose(transactions,budgets)',ret:'DiagnosisReport',descCN:'遍历所有Budget检测超支，为每个超支类生成Suggestion',
+       code:'for b in budgets:\n    if not b.is_exceeded(): continue\n    overrun_ratio = (b.current_spent - b.monthly_limit) / b.monthly_limit\n    exceeded.append((b.category, overrun_ratio, over_amount))\nscore = max(0, 100 - max_ratio * 100)\n# >0.30 => CRITICAL, else WARNING\n# 每个超支类别一条Suggestion'}
+    ],
+    desc:'逐项检查各类别预算是否超支。超出30%以上判为严重。为每个超支类别生成一条包含具体数字的建议。',
+    relations:[]
+  },
+  ConsumptionStructureStrategy: {
+    id:'ConsumptionStructureStrategy', nameCN:'消费结构诊断', type:'class', group:'diag-strategy', division:'D',
+    sourceFile:'strategies/consumption_structure.py',
+    attributes:[
+      {name:'BASIC_FOOD_MAX',type:'=0.25',descCN:'基础饮食上限'},
+      {name:'SOCIAL_FOOD_MAX',type:'=0.15',descCN:'社交饮食上限'},
+      {name:'ENTERTAINMENT_MAX',type:'=0.15',descCN:'娱乐上限'},
+      {name:'STUDY_MIN',type:'=0.05',descCN:'学习下限'}
+    ],
+    methods:[
+      {sig:'diagnose(transactions,budgets)',ret:'DiagnosisReport',descCN:'按备注关键词分类四维度，独立评分后取平均',
+       code:'for t in expenses:\n    note = t.note if t.note else ""\n    if "食堂" in note or "食材" in note:\n        basic_food += t.amount\n    elif "外卖" in note or "聚餐" in note:\n        social_food += t.amount\n# 上限型评分: _score_upper(ratio, max)\n# 下限型评分: _score_lower(ratio, min)\n# 备注不足→简化模式(总餐饮<=30%)'}
+    ],
+    desc:'面向日常消费的结构化分析。按备注关键词区分基础饮食与社交饮食，四维度独立评分取平均。备注数据不足时自动回退简化模式。',
+    relations:[]
+  },
+  CompositeDiagnosis: {
+    id:'CompositeDiagnosis', nameCN:'综合诊断', type:'class', group:'diag-strategy', division:'D',
+    sourceFile:'strategies/composite.py',
+    code:'class CompositeDiagnosis(DiagnosticStrategy):\n    def __init__(self, strategies:\n        list[tuple[DiagnosticStrategy, float]]):\n        self._strategies = strategies\n    # 用法: CompositeDiagnosis([\n    #   (SavingRateStrategy(), 0.4),\n    #   (CategoryOverrunStrategy(), 0.3),\n    #   (ConsumptionStructureStrategy(), 0.3)])',
+    attributes:[
+      {name:'_strategies',type:'list[tuple[Strategy,float]]',descCN:'子策略+权重列表'}
+    ],
+    methods:[
+      {sig:'add_strategy(s,weight)',ret:'void',descCN:'动态添加子策略',code:'self._strategies.append((strategy, weight))'},
+      {sig:'diagnose(transactions,budgets)',ret:'DiagnosisReport',descCN:'运行全部子策略，加权聚合评分，建议去重',
+       code:'for strategy, weight in self._strategies:\n    report = strategy.diagnose(transactions, budgets)\n    reports_and_weights.append((report, weight))\noverall_score = sum(r.overall_score * w for r, w in reports_and_weights)\n# 建议去重: 同(category, description)只保留一个'}
+    ],
+    desc:'Composite模式：自身继承DiagnosticStrategy（可替换任一策略），同时持有多个DiagnosticStrategy。这种双重结构使得诊断维度可自由组合。',
+    tip:'CompositeDiagnosis同时继承了DiagnosticStrategy并聚合多个DiagnosticStrategy。用法: CompositeDiagnosis([(SavingRateStrategy(),0.4),(CategoryOverrunStrategy(),0.3),(ConsumptionStructureStrategy(),0.3)])。综合评分由各子策略得分按权重加权求和。',
+    relations:[
+      {target:'DiagnosticStrategy',type:'aggregation',label:'holds 1..*',descCN:'持有多个子策略'}
+    ]
+  },
+
+  // ── 组3: 诊断结果 (D) ──
+  DiagnosisReport: {
+    id:'DiagnosisReport', nameCN:'诊断报告', type:'class', group:'diag-report', division:'D',
+    sourceFile:'models/diagnosis_report.py',
+    code:'class DiagnosisReport:\n    def __init__(self, overall_level: HealthLevel,\n                 overall_score: float,\n                 dimensions: list[DimensionDetail],\n                 suggestions: list[Suggestion]):\n        self.overall_level = overall_level\n        self.overall_score = overall_score\n        self.dimensions = dimensions or []\n        self.suggestions = suggestions or []\n        self.suggestions.sort(\n            key=lambda s: s.impact_amount, reverse=True)',
+    attributes:[
+      {name:'overall_level',type:'HealthLevel',descCN:'综合健康等级'},
+      {name:'overall_score',type:'float',descCN:'0~100综合评分'},
+      {name:'dimensions',type:'list[DimensionDetail]',descCN:'各维度明细'},
+      {name:'suggestions',type:'list[Suggestion]',descCN:'建议(按影响金额降序)'}
+    ],
+    methods:[
+      {sig:'__init__(...)',ret:'-',descCN:'构造时suggestions自动按impact_amount降序排列',
+       code:'self.suggestions.sort(key=lambda s: s.impact_amount, reverse=True)'}
+    ],
+    desc:'诊断的最终产出。构造时suggestions自动按影响金额降序排列——用户最先看到影响金额最大的建议。值对象，创建后内容不变。',
+    relations:[
+      {target:'HealthLevel',type:'dependency',label:'uses',descCN:'使用健康等级'},
+      {target:'DimensionDetail',type:'composition',label:'contains *',descCN:'包含维度明细'},
+      {target:'Suggestion',type:'composition',label:'contains *',descCN:'包含建议列表'}
+    ]
+  },
+  DimensionDetail: {
+    id:'DimensionDetail', nameCN:'维度明细', type:'class', group:'diag-report', division:'D',
+    sourceFile:'models/diagnosis_report.py',
+    code:'class DimensionDetail:\n    def __init__(self, strategy_name: str,\n                 score: float, level: HealthLevel,\n                 suggestion: Suggestion | None = None):\n        self.strategy_name = strategy_name\n        self.score = score\n        self.level = level\n        self.suggestion = suggestion  # None=无需建议',
+    attributes:[
+      {name:'strategy_name',type:'str',descCN:'策略名'},
+      {name:'score',type:'float',descCN:'0~100得分'},
+      {name:'level',type:'HealthLevel',descCN:'该维度等级'},
+      {name:'suggestion',type:'Suggestion|None',descCN:'建议(None=无需建议)'}
+    ],
+    methods:[],
+    desc:'单个诊断维度的评分与建议。如"储蓄率维度: 70分, WARNING"。suggestion为None表示该维度健康无需建议。',
+    relations:[
+      {target:'HealthLevel',type:'dependency',label:'uses',descCN:'使用健康等级'},
+      {target:'Suggestion',type:'composition',label:'contains',descCN:'包含建议'}
+    ]
+  },
+  Suggestion: {
+    id:'Suggestion', nameCN:'建议', type:'class', group:'diag-report', division:'D',
+    sourceFile:'models/suggestion.py',
+    code:'class Suggestion:\n    def __init__(self, priority: int,\n                 impact_amount: float,\n                 category: str,\n                 description: str):\n        self.priority = priority\n        # 1=必须改/2=建议改/3=可选\n        self.impact_amount = impact_amount\n        # 执行后每月可改善的金额\n        self.category = category\n        self.description = description\n        # 含具体数字，不套模板句',
+    attributes:[
+      {name:'priority',type:'int',descCN:'1=必须改/2=建议改/3=可选'},
+      {name:'impact_amount',type:'float',descCN:'每月可改善金额'},
+      {name:'category',type:'str',descCN:'关联支出类别'},
+      {name:'description',type:'str',descCN:'含具体数字的描述'}
+    ],
+    methods:[],
+    desc:'一条可操作建议。所有数字由策略根据实际数据计算，不套模板句。',
+    relations:[]
+  },
+  HealthLevel: {
+    id:'HealthLevel', nameCN:'健康等级', type:'enum', group:'diag-report', division:'D',
+    sourceFile:'models/diagnosis_report.py',
+    code:'class HealthLevel(Enum):\n    HEALTHY = "健康"\n    WARNING = "预警"\n    CRITICAL = "严重"',
+    attributes:[
+      {name:'HEALTHY',type:'="健康"',descCN:'财务状况良好'},
+      {name:'WARNING',type:'="预警"',descCN:'需要关注'},
+      {name:'CRITICAL',type:'="严重"',descCN:'急需改善'}
+    ],
+    methods:[],
+    desc:'三种健康等级枚举，贯穿整个诊断模块。',
+    relations:[]
+  },
+
+  // ── 组4: 预算规则族 (E) ──
+  BudgetRule: {
+    id:'BudgetRule', nameCN:'预算规则接口', type:'abstract', group:'budget', division:'E',
+    sourceFile:'rules/budget_rule.py',
+    code:'class BudgetRule(ABC):\n    @abstractmethod\n    def allocate(self, income: float,\n        history: list[Transaction]\n    ) -> dict[str, float]:\n        ...',
+    attributes:[],
+    methods:[
+      {sig:'allocate(income,history)',ret:'dict[str,float]',descCN:'返回各类别建议预算（抽象方法）',
+       code:'@abstractmethod\ndef allocate(self, income: float,\n            history: list[Transaction]) -> dict[str, float]:\n    ...'}
+    ],
+    desc:'预算分配策略抽象基类。输入月收入+消费历史，输出各类别建议预算。策略模式在预算模块的应用。',
+    tip:'与DiagnosticStrategy采用相同的设计骨架。FixedBudgetRule提供手动设定模式，Rule503020实现50/30/20自动分配。更换规则无需修改接口。',
+    relations:[]
+  },
+  FixedBudgetRule: {
+    id:'FixedBudgetRule', nameCN:'手动预算', type:'class', group:'budget', division:'E',
+    sourceFile:'rules/fixed_budget.py',
+    code:'class FixedBudgetRule(BudgetRule):\n    def __init__(self):\n        self._budgets = {}  # {类别: 限额}',
+    attributes:[
+      {name:'_budgets',type:'dict[str,float]',descCN:'手动设定的限额'}
+    ],
+    methods:[
+      {sig:'set_budget(category,limit)',ret:'void',descCN:'设定某类别限额',code:'self._budgets[category] = limit'},
+      {sig:'allocate(income,history)',ret:'dict',descCN:'直接返回预设限额',code:'return dict(self._budgets)'}
+    ],
+    desc:'用户手动设定各类别固定限额（如餐饮1000、交通300），allocate()直接返回预设值。不依赖历史数据。',
+    relations:[]
+  },
+  Rule503020: {
+    id:'Rule503020', nameCN:'50/30/20法则', type:'class', group:'budget', division:'E',
+    sourceFile:'rules/rule_503020.py',
+    code:'class Rule503020(BudgetRule):\n    def __init__(self, sub_necessities=None,\n                 sub_wants=None):\n        self.necessities_cats = sub_necessities or [\n            "餐饮","交通","家居日用",\n            "个人护理","医疗健康","学习"]\n        self.wants_cats = sub_wants or [\n            "娱乐","数码电子","运动户外",\n            "服饰配饰","其他"]',
+    attributes:[
+      {name:'necessities_cats',type:'list[str]',descCN:'必要支出类别'},
+      {name:'wants_cats',type:'list[str]',descCN:'想要支出类别'}
+    ],
+    methods:[
+      {sig:'allocate(income,history)',ret:'dict',descCN:'50%必要+30%想要+20%储蓄；子类按历史比例分配',
+       code:'necessity_total = income * 0.5\nbudget.update(self._distribute(\n    necessity_total, self.necessities_cats, history))\nwants_total = income * 0.3\nbudget.update(self._distribute(\n    wants_total, self.wants_cats, history))\nbudget["储蓄"] = income * 0.2'},
+      {sig:'_distribute(total,cats,history)',ret:'dict',descCN:'按历史支出比例分配；无历史则均分；子类别归入父类别',
+       code:'# 统计各类别历史支出(子类别归入父类别)\nfor t in history:\n    if not t.is_expense(): continue\n    matched = CATEGORY_PARENTS.get(t.category, t.category)\n    if matched in categories:\n        cat_totals[matched] += t.amount\n# 按比例分配\nreturn {cat: total * (cat_totals[cat]/all_total)\n        for cat in categories}'}
+    ],
+    desc:'经典50/30/20法则。必要和想要支出的子类别按历史消费比例自动分配（如餐饮占必要支出60%则分配60%*50%*收入）。支持子类别归入父类别（如"餐饮食品"归"餐饮"）。',
+    relations:[]
+  },
+
+  // ── 组5: 储蓄方法族 (E) ──
+  SavingsMethod: {
+    id:'SavingsMethod', nameCN:'储蓄方法接口', type:'abstract', group:'savings', division:'E',
+    sourceFile:'methods/savings_method.py',
+    code:'class SavingsMethod(ABC):\n    @abstractmethod\n    def calculate(self, monthly_income: float,\n        history: list[Transaction]\n    ) -> SavingsPlan:\n        ...',
+    attributes:[],
+    methods:[
+      {sig:'calculate(monthly_income,history)',ret:'SavingsPlan',descCN:'生成52周储蓄计划（抽象方法）',
+       code:'@abstractmethod\ndef calculate(self, monthly_income: float,\n            history: list[Transaction]) -> SavingsPlan:\n    ...'}
+    ],
+    desc:'储蓄计算方法抽象基类。输入月收入+历史，输出52周存款计划。策略模式在储蓄模块的应用。',
+    tip:'三个模块（诊断/预算/储蓄）统一采用策略模式。接口风格一致：diagnose/allocate/calculate均接受数据与历史记录，返回结果对象。统一设计降低理解难度。',
+    relations:[
+      {target:'SavingsPlan',type:'dependency',label:'returns',descCN:'返回储蓄计划'}
+    ]
+  },
+  FixedAmountMethod: {
+    id:'FixedAmountMethod', nameCN:'固定金额储蓄', type:'class', group:'savings', division:'E',
+    sourceFile:'methods/fixed_amount.py',
+    attributes:[
+      {name:'monthly_amount',type:'float',descCN:'每月固定储蓄额'}
+    ],
+    methods:[
+      {sig:'calculate(income,history)',ret:'SavingsPlan',descCN:'固定金额×12=年总额，52周均分',
+       code:'annual = self.monthly_amount * 12\nweekly = annual / 52\ndesc = (f"每月固定储蓄 {self.monthly_amount:.0f}"\n       f"，年累计 {annual:.0f}")\nreturn SavingsPlan(\n    weekly_amounts=[weekly]*52,\n    annual_total=annual, description=desc)'}
+    ],
+    desc:'每月固定存一笔钱（如500元），52周均分。年累计=月存×12。',
+    relations:[]
+  },
+  Week52Method: {
+    id:'Week52Method', nameCN:'52周渐进储蓄', type:'class', group:'savings', division:'E',
+    sourceFile:'methods/week52.py',
+    attributes:[
+      {name:'base',type:'float',descCN:'基数(默认10元)'},
+      {name:'reversed',type:'bool',descCN:'是否反向(从大到小)'}
+    ],
+    methods:[
+      {sig:'calculate(income,history)',ret:'SavingsPlan',descCN:'标准版递增(第N周存N×base)；反向版递减',
+       code:'if self.reversed:\n    # 反向: 第1周最多, 递减\n    amounts = [(53-n)*self.base for n in range(1,53)]\nelse:\n    # 标准: 第1周最少, 递增\n    amounts = [n*self.base for n in range(1,53)]\nannual = sum(amounts)  # = base × 1378\nreturn SavingsPlan(weekly_amounts=amounts,\n    annual_total=annual, description=desc)'}
+    ],
+    desc:'标准版：第N周存N×基数（基数默认10元），年累计=基数×1378。反向版从大到小递减。适合培养渐进储蓄习惯。',
+    relations:[]
+  },
+  PercentageMethod: {
+    id:'PercentageMethod', nameCN:'比例储蓄', type:'class', group:'savings', division:'E',
+    sourceFile:'methods/percentage.py',
+    attributes:[
+      {name:'rate',type:'float',descCN:'储蓄比例(默认0.2)'}
+    ],
+    methods:[
+      {sig:'calculate(income,history)',ret:'SavingsPlan',descCN:'月收入×比例=月存额，52周均分',
+       code:'monthly = monthly_income * self.rate\nannual = monthly * 12\nweekly = annual / 52\nreturn SavingsPlan(\n    weekly_amounts=[weekly]*52,\n    annual_total=annual,\n    description=f"每月储蓄收入的{self.rate:.0%}"\n               f"，年累计 {annual:.0f}")'}
+    ],
+    desc:'每月按收入固定比例存钱（默认20%）。如rate=0.2则月存=收入×20%，52周均分。',
+    relations:[]
+  },
+  SavingsPlan: {
+    id:'SavingsPlan', nameCN:'储蓄计划', type:'class', group:'savings', division:'E',
+    sourceFile:'models/savings_plan.py',
+    code:'class SavingsPlan:\n    def __init__(self,\n        weekly_amounts: list[float],\n        annual_total: float,\n        description: str):\n        self.weekly_amounts = weekly_amounts\n        # 52项，第i项=第i+1周建议存款\n        self.annual_total = annual_total\n        self.description = description',
+    attributes:[
+      {name:'weekly_amounts',type:'list[float]',descCN:'52周每周存款额'},
+      {name:'annual_total',type:'float',descCN:'年储蓄总额'},
+      {name:'description',type:'str',descCN:'方法说明文本'}
+    ],
+    methods:[],
+    desc:'储蓄方法计算的结果载体。52周每周存款额+全年总额+文字说明。值对象，创建后只读。',
+    relations:[]
+  },
+
+  // ── 组6: 储蓄倒推 (E) ──
+  SavingGoalCalculator: {
+    id:'SavingGoalCalculator', nameCN:'储蓄目标倒推器', type:'class', group:'goal', division:'E',
+    sourceFile:'services/saving_calculator.py',
+    code:'class SavingGoalCalculator:\n    def __init__(self):\n        self._cut_ratios = {\n            "餐饮": 0.25, "娱乐": 0.20,\n            "数码电子": 0.10, "运动户外": 0.05,\n            "服饰配饰": 0.05, "家居日用": 0.05,\n            "其他": 0.05\n        }',
+    attributes:[
+      {name:'_cut_ratios',type:'dict[str,float]',descCN:'各类别削减比例(可调)'}
+    ],
+    methods:[
+      {sig:'calculate_plan(target,months,history)',ret:'MonthlyPlan',descCN:'逆推4步：月均收支→所需月存→差额→按比例分配削减',
+       code:'# 1. 月均收支\nspan_months = max((max(dates)-min(dates)).days/30, 1)\nmonthly_income = total_income / span_months\nnatural_saving = monthly_income - monthly_expense\n# 2. 所需 vs 差额\nrequired = target / months\nextra_needed = max(0, required - natural_saving)\n# 3. 按cut_ratios分配削减\nfor cat, ratio in self._cut_ratios.items():\n    cut = extra_needed * ratio\n    actual_cut = min(cut, cat_expense * 0.8)\n# 4. 每类生成Suggestion'},
+      {sig:'set_cut_ratio(cat,ratio)',ret:'void',descCN:'自定义某类别削减比例',code:'self._cut_ratios[category] = ratio'}
+    ],
+    desc:'回答"想在N个月内存X元，每月要存多少、各类别削减多少"。差额=所需月存-自然结余，差额按可配置比例分配到各类别。',
+    tip:'倒推算法4步: 1)历史月均收入-月均支出=自然结余; 2)目标/月数=所需月存; 3)差额=所需-自然; 4)差额按各类别cut_ratio分配削减(如餐饮25%,娱乐20%)。每类削减不超过当前月均支出的80%。',
+    relations:[
+      {target:'MonthlyPlan',type:'dependency',label:'returns',descCN:'返回月度计划'}
+    ]
+  },
+  MonthlyPlan: {
+    id:'MonthlyPlan', nameCN:'月度计划', type:'class', group:'goal', division:'E',
+    sourceFile:'models/monthly_plan.py',
+    code:'class MonthlyPlan:\n    def __init__(self,\n        required_monthly_saving: float,\n        current_natural_saving: float,\n        extra_cut_needed: float,\n        category_cuts: dict[str, float],\n        suggestions: list[Suggestion]):\n        self.required_monthly_saving = ...\n        self.category_cuts = category_cuts\n        # {"餐饮": 300, "娱乐": 200}\n        self.suggestions = suggestions or []\n        self.suggestions.sort(\n            key=lambda s: s.impact_amount, reverse=True)',
+    attributes:[
+      {name:'required_monthly_saving',type:'float',descCN:'每月需储蓄'},
+      {name:'current_natural_saving',type:'float',descCN:'当前自然月结余'},
+      {name:'extra_cut_needed',type:'float',descCN:'每月需额外削减'},
+      {name:'category_cuts',type:'dict[str,float]',descCN:'各类别削减明细'},
+      {name:'suggestions',type:'list[Suggestion]',descCN:'削减建议(按影响金额降序)'}
+    ],
+    methods:[
+      {sig:'__init__(...)',ret:'-',descCN:'构造时suggestions按impact_amount降序',code:'self.suggestions.sort(key=lambda s: s.impact_amount, reverse=True)'}
+    ],
+    desc:'储蓄倒推的结果载体。包含：每月需储蓄金额、当前自然月结余、需额外削减的差额、各类别削减明细。',
+    relations:[
+      {target:'Suggestion',type:'composition',label:'contains *',descCN:'包含削减建议'}
+    ]
+  }
+};
+
+// ================================================================
+// GROUP DEFINITIONS — 6 logical columns, each maps to a division
+// ================================================================
+const groups = [
+  { id:'entity',        title:'核心实体层',       subtitle:'C', classes:['Transaction','Budget','AccountType'] },
+  { id:'diag-strategy', title:'诊断策略族',       subtitle:'D', classes:['DiagnosticStrategy','SavingRateStrategy','CategoryOverrunStrategy','ConsumptionStructureStrategy','CompositeDiagnosis'] },
+  { id:'diag-report',   title:'诊断结果',         subtitle:'D', classes:['DiagnosisReport','DimensionDetail','Suggestion','HealthLevel'] },
+  { id:'budget',        title:'预算规则族',       subtitle:'E', classes:['BudgetRule','FixedBudgetRule','Rule503020'] },
+  { id:'savings',       title:'储蓄方法族',       subtitle:'E', classes:['SavingsMethod','FixedAmountMethod','Week52Method','PercentageMethod','SavingsPlan'] },
+  { id:'goal',          title:'储蓄倒推',         subtitle:'E', classes:['SavingGoalCalculator','MonthlyPlan'] }
+];
+
+const controllerClass = 'FinanceController';
+
+// ================================================================
+// RENDER
+// ================================================================
+function renderDiagram() {
+  const ctrlRow = document.getElementById('controllerRow');
+  const groupsGrid = document.getElementById('groupsGrid');
+
+  ctrlRow.innerHTML = '';
+  ctrlRow.appendChild(createCard(classes[controllerClass], false));
+
+  groupsGrid.innerHTML = '';
+  groups.forEach(g => {
+    const col = document.createElement('div');
+    col.className = 'group-col';
+    col.dataset.group = g.id;
+    col.dataset.division = g.classes.length > 0 ? classes[g.classes[0]].division : '';
+
+    const title = document.createElement('div');
+    title.className = 'group-title';
+    title.textContent = g.title;
+    col.appendChild(title);
+
+    // subtitle removed
+
+    g.classes.forEach((cid, i) => {
+      const c = classes[cid];
+      const firstInGroup = g.classes[0];
+      const isSub = (i > 0 && (classes[firstInGroup]?.type === 'abstract' || classes[firstInGroup]?.type === 'interface'));
+      col.appendChild(createCard(c, isSub));
+    });
+    groupsGrid.appendChild(col);
+  });
+}
+
+function createCard(c, isSub) {
+  const div = document.createElement('div');
+  div.className = 'card type-' + c.type + (isSub ? ' sub-card' : '');
+  div.dataset.id = c.id;
+  div.dataset.group = c.group;
+  div.dataset.division = c.division;
+  div.innerHTML =
+    '<div class="card-name">' + c.id + '</div>' +
+    '<div class="card-cn">' + c.nameCN + '</div>' +
+    '<span class="card-badge">' + typeLabel(c.type) + '</span>';
+  return div;
+}
+
+function typeLabel(t) {
+  switch (t) {
+    case 'abstract': return '抽象/接口';
+    case 'enum': return '枚举';
+    case 'controller': return '控制器';
+    default: return '类';
+  }
+}
+
+// filter functionality removed
+
+// filter bar removed — no filter listeners needed
+
+// ================================================================
+// HOVER
+// ================================================================
+function setupInteraction() {
+  const area = document.getElementById('diagramArea');
+
+  area.addEventListener('mouseover', function(e) {
+    const card = e.target.closest('.card');
+    if (!card || !card.dataset.id || card.classList.contains('dimmed')) return;
+    card.classList.add('highlight');
+  });
+
+  area.addEventListener('mouseout', function(e) {
+    const card = e.target.closest('.card');
+    if (!card) return;
+    card.classList.remove('highlight');
+  });
+
+  area.addEventListener('click', function(e) {
+    const card = e.target.closest('.card');
+    if (!card || !card.dataset.id || card.classList.contains('dimmed')) return;
+    showDetailPopup(card.dataset.id);
+  });
+}
+
+// ================================================================
+// DETAIL POPUP
+// ================================================================
+function showDetailPopup(classId) {
+  const c = classes[classId];
+  if (!c) return;
+
+  document.querySelectorAll('.card.selected').forEach(el => el.classList.remove('selected'));
+  const selCard = document.querySelector('.card[data-id="' + classId + '"]');
+  if (selCard) selCard.classList.add('selected');
+
+  let html = '<span class="close-btn" onclick="closePopup()">&times;</span>';
+  html += '<h2>' + c.id + '</h2>';
+  html += '<div class="cn-badge">' + c.nameCN + ' &middot; ' + typeLabel(c.type) + '</div>';
+  html += '<div class="source-file">' + c.sourceFile + '</div>';
+  if (c.desc) html += '<div class="desc">' + c.desc + '</div>';
+  if (c.tip) html += '<div class="tip-box"><strong>设计要点：</strong>' + c.tip + '</div>';
+
+  // class-level code
+  if (c.code) {
+    html += '<h3>类定义</h3>';
+    html += '<div class="class-code">' + c.code + '</div>';
+  }
+
+  if (c.attributes.length > 0) {
+    html += '<h3>属性</h3><table><thead><tr><th>英文名</th><th>类型</th><th>说明</th></tr></thead><tbody>';
+    c.attributes.forEach(a => {
+      html += '<tr><td><code>' + a.name + '</code></td><td>' + a.type + '</td><td class="cn">' + a.descCN + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  if (c.methods.length > 0) {
+    html += '<h3>方法</h3>';
+    c.methods.forEach(m => {
+      html += '<div class="method-row">';
+      html += '<div class="method-sig">' + m.sig + ' : ' + m.ret + '</div>';
+      html += '<div class="method-desc">' + m.descCN + '</div>';
+      if (m.code) html += '<div class="method-code">' + m.code + '</div>';
+      html += '</div>';
+    });
+  }
+
+  if (c.relations.length > 0) {
+    html += '<h3>关联类</h3>';
+    c.relations.forEach(r => {
+      html += '<span class="rel-link" onclick="event.stopPropagation();navigateTo(\'' + r.target + '\')">' +
+        r.target + '<span class="rel-type"> (' + r.label + ')</span></span>';
+    });
+  }
+
+  document.getElementById('detailPopup').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+function closePopup() {
+  document.getElementById('detailOverlay').classList.remove('show');
+  document.querySelectorAll('.card.selected').forEach(el => el.classList.remove('selected'));
+}
+
+function navigateTo(classId) {
+  const card = document.querySelector('.card[data-id="' + classId + '"]');
+  showDetailPopup(classId);
+  if (card) {
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
+
+document.getElementById('detailOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closePopup();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closePopup();
+});
+
+// ================================================================
+// INIT
+// ================================================================
+function init() {
+  renderDiagram();
+  setupInteraction();
+}
+
+window.addEventListener('load', init);
+
+// ================================================================
+// PAGE SWITCHING
+// ================================================================
+document.getElementById('pageTabs').addEventListener('click', function(e) {
+  const tab = e.target.closest('.page-tab');
+  if (!tab) return;
+  const pageId = tab.dataset.page;
+
+  // Update tab active states
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+
+  // Show/hide pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
+
+  // Recalculate layout if switching to page1 (UML diagram may need re-render)
+  if (pageId === 'page1') {
+    // Scroll to top of diagram
+    const main = target.querySelector('main');
+    if (main) main.scrollTop = 0;
+  }
+});
+
+// ================================================================
+// CHAPTER COLLAPSE TOGGLE (PAGE 2)
+// ================================================================
+function toggleChapter(header) {
+  header.classList.toggle('collapsed');
+  const body = header.nextElementSibling;
+  if (body) body.classList.toggle('collapsed');
+}
+
+// ================================================================
+// VSCode OPEN BUTTONS — 为Page2每个知识点生成"打开代码"按钮
+// ================================================================
+(function() {
+  // ---------- 基础路径：HTML所在目录下的"财务管理系统-提交版" ----------
+  function getBasePath() {
+    // 从当前HTML文件的路径推导代码根目录
+    var href = window.location.href;
+    // file:///D:/.../UML类图展示.html → D:/.../UML类图展示.html
+    var decoded = decodeURIComponent(href.replace(/^file:\/\/\//, ''));
+    // Windows 路径用反斜杠统一处理
+    decoded = decoded.replace(/\//g, '\\');
+    // 去掉HTML文件名，得到HTML所在目录
+    var htmlDir = decoded.replace(/\\[^\\]*$/, '');
+    return htmlDir + '\\财务管理系统-提交版';
+  }
+
+  var BASE = getBasePath();
+
+  // ---------- 解析 kp-file 文本 ----------
+  function parseFileRefs(kpFileText) {
+    var parts = kpFileText.split('·');
+    var refs = [];
+    var currentFile = null;
+
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i].trim();
+      if (!part) continue;
+
+      // 判断是否包含文件路径 (含 / 或 .py)
+      if (part.indexOf('/') !== -1 || part.indexOf('.py') !== -1) {
+        // 格式: path/file.py:line 或 path/file.py:start-end
+        var m = part.match(/^(.+?\.py)(?::(\d+)(?:-(\d+))?)?$/);
+        if (m) {
+          currentFile = m[1];
+          refs.push({
+            file: currentFile,
+            line: m[2] ? parseInt(m[2], 10) : null,
+            label: currentFile + (m[2] ? ':' + m[2] : '')
+          });
+        } else {
+          // 非标准路径（如"全部strategies/"），跳过
+          currentFile = null;
+        }
+      } else if (currentFile && /^\d+(-\d+)?$/.test(part)) {
+        // 仅行号，沿用上一个文件
+        var lm = part.match(/^(\d+)(?:-(\d+))?$/);
+        if (lm) {
+          refs.push({
+            file: currentFile,
+            line: parseInt(lm[1], 10),
+            label: currentFile + ':' + lm[1]
+          });
+        }
+      }
+    }
+
+    // 按文件去重（同一文件保留首次出现的行号）
+    var seen = {};
+    var unique = [];
+    for (var r = 0; r < refs.length; r++) {
+      var ref = refs[r];
+      if (!seen[ref.file]) {
+        seen[ref.file] = true;
+        unique.push(ref);
+      }
+    }
+    return unique;
+  }
+
+  // ---------- 构建 VSCode URI ----------
+  function buildVscodeUri(filePath, line) {
+    // filePath 形如 services/finance_controller.py
+    var fullPath = BASE + '\\' + filePath;
+    // Windows 反斜杠 → URI 正斜杠
+    var uriPath = fullPath.replace(/\\/g, '/');
+    // encodeURI 会编码中文等非ASCII字符，保留 / : 等合法URI字符
+    var encoded = encodeURI(uriPath);
+    var result = 'vscode://file/' + encoded;
+    if (line) {
+      result += ':' + line;
+    }
+    return result;
+  }
+
+  // ---------- 为 kp-item 创建按钮 ----------
+  function addOpenButtons(kpItem) {
+    var fileSpan = kpItem.querySelector('.kp-file');
+    if (!fileSpan) return;
+
+    var raw = fileSpan.textContent.trim();
+    var refs = parseFileRefs(raw);
+    if (refs.length === 0) return;
+
+    // 创建按钮容器
+    var btnContainer = document.createElement('div');
+    btnContainer.className = 'kp-open-btns';
+
+    for (var i = 0; i < refs.length; i++) {
+      var ref = refs[i];
+      var uri = buildVscodeUri(ref.file, ref.line);
+
+      var a = document.createElement('a');
+      a.className = 'kp-open-btn';
+      a.href = uri;
+      a.title = '在 VSCode 中打开 ' + ref.file + (ref.line ? ' (第' + ref.line + '行)' : '');
+      a.innerHTML = '<span class="btn-icon">📂</span>' + ref.file +
+        (ref.line ? '<span class="btn-lines"> L' + ref.line + '</span>' : '');
+
+      // 点击事件（a标签默认行为即可，但加个fallback）
+      a.addEventListener('click', function(e) {
+        // 尝试用 vscode:// 协议打开，若失败则提示
+        // 大多数浏览器对未知协议会静默失败，这里不做额外处理
+        // a标签的href已设置好
+      });
+
+      btnContainer.appendChild(a);
+    }
+
+    // 将按钮放在 kp-file 后面
+    fileSpan.parentNode.insertBefore(btnContainer, fileSpan.nextSibling);
+  }
+
+  // ---------- 页面加载后处理 ----------
+  function initOpenButtons() {
+    // 只处理 Page2 中的 kp-item
+    var items = document.querySelectorAll('#page2 .kp-item');
+    for (var i = 0; i < items.length; i++) {
+      addOpenButtons(items[i]);
+    }
+  }
+
+  // DOM 就绪后执行
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initOpenButtons);
+  } else {
+    initOpenButtons();
+  }
+})();
+</script>
+</body>
+</html>

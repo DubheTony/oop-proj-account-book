@@ -1,18 +1,14 @@
-# main_gui_ui_loader.py — 从 .ui 文件加载 UI，衔接业务逻辑
-# 用法: python main_gui_ui_loader.py
-#       或作为模块导入后使用 MainWindow 类
+# main_gui.py — 个人财务管理系统 PySide6 图形界面
+# UI 由 Qt Designer 制作 .ui 文件，经 pyside6-uic 编译为 Python 类
+# 用法: python main_gui.py
 import sys
 from pathlib import Path
 from datetime import date
 
-from PySide6.QtCore import Qt, Signal, QFile, QObject
-from PySide6.QtUiTools import QUiLoader
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QDialog, QMessageBox, QFileDialog,
-    QTableWidget, QTableWidgetItem, QTabWidget, QToolBar, QStatusBar,
-    QLabel, QLineEdit, QComboBox, QPushButton, QRadioButton,
-    QTextEdit, QGroupBox, QDialogButtonBox, QButtonGroup, QAbstractItemView,
-    QHeaderView,
+    QTableWidgetItem, QComboBox, QPushButton, QLabel, QButtonGroup,
 )
 
 from models.transaction import Transaction, AccountType
@@ -20,6 +16,11 @@ from models.budget import Budget
 from models.diagnosis_report import HealthLevel
 from services import FinanceController
 from services.category_normalizer import STANDARD_CATEGORIES
+
+# 生成的 UI 类
+from ui_main_gui import Ui_MainWindow
+from ui_add_transaction_dialog import Ui_AddTransactionDialog
+from ui_set_budget_dialog import Ui_SetBudgetDialog
 
 # ====== 全局控制器 + 启动时加载持久化数据 ======
 ctrl = FinanceController()
@@ -42,15 +43,7 @@ try:
     if _txn_count > 0:
         _startup_log.append(f"交易记录: {_txn_count} 条(来自JSON)")
     else:
-        _csv_files = sorted(_script_dir.glob("*.csv")) + sorted((_script_dir / "data").glob("*.csv"))
-        for _csv_path in _csv_files:
-            try:
-                _count = ctrl.import_csv(str(_csv_path))
-                _startup_log.append(f"{_csv_path.name}: {_count} 条")
-            except Exception as _e:
-                _startup_log.append(f"{_csv_path.name}: 失败({_e})")
-        if _csv_files:
-            ctrl.save_transactions(str(_transactions_path))
+        _startup_log.append("暂无交易记录")
 except Exception as _e:
     _startup_log.append(f"交易加载失败({_e})")
 
@@ -79,23 +72,6 @@ from methods.percentage import PercentageMethod
 
 # ====== 辅助 ======
 
-def _ui_path(name: str) -> str:
-    return str(_script_dir / name)
-
-
-def _load_ui_file(widget_class, ui_name: str, parent=None):
-    """加载 .ui 文件 -> 返回 QWidget 实例（由 QUiLoader 创建）"""
-    ui_file = QFile(_ui_path(ui_name))
-    if not ui_file.open(QFile.ReadOnly):
-        raise FileNotFoundError(f"无法打开 .ui 文件: {_ui_path(ui_name)}")
-    loader = QUiLoader()
-    widget = loader.load(ui_file, parent)
-    ui_file.close()
-    if widget is None:
-        raise RuntimeError(f"QUiLoader 加载失败: {ui_name}")
-    return widget
-
-
 def _save_settings():
     try:
         ctrl.save_settings(str(_settings_path))
@@ -112,48 +88,21 @@ def _save_transactions():
 
 # ====== 对话框 ======
 
-class AddTransactionDialog(QDialog):
-    """添加交易对话框 — UI 从 add_transaction_dialog.ui 加载"""
+class AddTransactionDialog(QDialog, Ui_AddTransactionDialog):
+    """添加交易对话框 — UI 由 pyside6-uic 从 add_transaction_dialog.ui 编译"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setupUi(self)
         self._result = None
 
-        # 用 QUiLoader 加载 .ui（parent=self 让子控件可被 findChild 找到）
-        ui_file = QFile(_ui_path("add_transaction_dialog.ui"))
-        ui_file.open(QFile.ReadOnly)
-        loader = QUiLoader()
-        ui_dialog = loader.load(ui_file, self)
-        ui_file.close()
-
-        # 从加载的 dialog 提取布局和属性
-        self.setWindowTitle(ui_dialog.windowTitle())
-        self.resize(ui_dialog.size())
-        layout = ui_dialog.layout()
-        layout.setParent(None)
-        self.setLayout(layout)
-        ui_dialog.hide()
-        ui_dialog.deleteLater()
-
-        # 通过名称获取子控件（findChild 递归搜索，parent=self 所以能找到）
-        self.date_edit = self.findChild(QLineEdit, "date_edit")
-        self.amount_edit = self.findChild(QLineEdit, "amount_edit")
-        self.type_combo = self.findChild(QComboBox, "type_combo")
-        self.cat_combo = self.findChild(QComboBox, "cat_combo")
-        self.acc_combo = self.findChild(QComboBox, "acc_combo")
-        self.note_edit = self.findChild(QLineEdit, "note_edit")
-        button_box = self.findChild(QDialogButtonBox, "button_box")
-
         # 初始化
-        if self.date_edit:
-            self.date_edit.setText(date.today().isoformat())
-        if self.cat_combo:
-            self.cat_combo.addItems(STANDARD_CATEGORIES)
+        self.date_edit.setText(date.today().isoformat())
+        self.cat_combo.addItems(STANDARD_CATEGORIES)
 
-        # 信号连接
-        if button_box:
-            button_box.accepted.connect(self._on_ok)
-            button_box.rejected.connect(self.reject)
+        # 信号
+        self.button_box.accepted.connect(self._on_ok)
+        self.button_box.rejected.connect(self.reject)
 
     def _on_ok(self):
         try:
@@ -174,36 +123,18 @@ class AddTransactionDialog(QDialog):
         return self._result
 
 
-class SetBudgetDialog(QDialog):
-    """设置预算对话框 — UI 从 set_budget_dialog.ui 加载"""
+class SetBudgetDialog(QDialog, Ui_SetBudgetDialog):
+    """设置预算对话框 — UI 由 pyside6-uic 从 set_budget_dialog.ui 编译"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setupUi(self)
         self._result = None
 
-        ui_file = QFile(_ui_path("set_budget_dialog.ui"))
-        ui_file.open(QFile.ReadOnly)
-        loader = QUiLoader()
-        ui_dialog = loader.load(ui_file, self)
-        ui_file.close()
+        self.cat_combo.addItems(STANDARD_CATEGORIES)
 
-        self.setWindowTitle(ui_dialog.windowTitle())
-        self.resize(ui_dialog.size())
-        layout = ui_dialog.layout()
-        layout.setParent(None)
-        self.setLayout(layout)
-        ui_dialog.hide()
-        ui_dialog.deleteLater()
-
-        self.cat_combo = self.findChild(QComboBox, "cat_combo")
-        self.limit_edit = self.findChild(QLineEdit, "limit_edit")
-        button_box = self.findChild(QDialogButtonBox, "button_box")
-
-        if self.cat_combo:
-            self.cat_combo.addItems(STANDARD_CATEGORIES)
-        if button_box:
-            button_box.accepted.connect(self._on_ok)
-            button_box.rejected.connect(self.reject)
+        self.button_box.accepted.connect(self._on_ok)
+        self.button_box.rejected.connect(self.reject)
 
     def _on_ok(self):
         cat = self.cat_combo.currentText().strip()
@@ -221,68 +152,30 @@ class SetBudgetDialog(QDialog):
 
 # ====== 主窗口 ======
 
-class MainWindow(QMainWindow):
-    """主窗口 — UI 从 main_gui.ui 加载，业务逻辑在此衔接"""
+class MainWindow(QMainWindow, Ui_MainWindow):
+    """主窗口 — UI 由 pyside6-uic 从 main_gui.ui 编译"""
 
     data_changed = Signal()
 
     def __init__(self):
         super().__init__()
+        # setupUi() 创建所有控件并设为 self 属性（如 self.tabs, self.txn_table...）
+        self.setupUi(self)
 
-        # ---- 加载 .ui 文件 ----
-        ui_file = QFile(_ui_path("main_gui.ui"))
-        ui_file.open(QFile.ReadOnly)
-        loader = QUiLoader()
-        loaded_ui = loader.load(ui_file, self)  # parent=self
-        ui_file.close()
-
-        if loaded_ui is None:
-            raise RuntimeError("无法加载 main_gui.ui")
-
-        # 从 loaded_ui（QMainWindow）转移属性到 self
-        self.setWindowTitle(loaded_ui.windowTitle())
-        self.resize(loaded_ui.size())
-        self.setMinimumSize(loaded_ui.minimumSize())
-
-        # ---- 转移中央控件（QTabWidget） ----
-        central_w = loaded_ui.centralWidget()
-        if central_w:
-            central_w.setParent(None)
-            self.setCentralWidget(central_w)
-
-        # ---- 转移工具栏 ----
-        tb = loaded_ui.findChild(QToolBar, "toolbar_month")
-        if tb:
-            tb.setParent(None)
-            self.addToolBar(tb)
-
-        # ---- 转移状态栏 ----
-        sb = loaded_ui.findChild(QStatusBar, "statusbar")
-        if sb:
-            sb.setParent(None)
-            self.setStatusBar(sb)
-
-        # 释放 loaded_ui 外壳
-        loaded_ui.hide()
-        loaded_ui.deleteLater()
-
-        # ---- 设置状态栏消息 ----
-        self.statusBar().showMessage(
-            f"启动: {'; '.join(_startup_log)}" if _startup_log
-            else "就绪（无数据，可手动导入CSV或添加交易）"
-        )
-
-        # ---- 获取顶层 Tab 控件 ----
-        self.tabs = self.findChild(QTabWidget, "tabs")
+        # ---- 创建 QButtonGroup（.ui 中无法定义，在代码中补建） ----
+        self._create_button_groups()
 
         # ---- 工具栏：添加月份选择控件 ----
-        self._setup_toolbar(tb)
-
-        # ---- 获取各 Tab 内子控件引用 (findChild 递归) ----
-        self._gather_child_refs()
+        self._setup_toolbar()
 
         # ---- 信号/槽连接 ----
         self._connect_signals()
+
+        # ---- 状态栏消息 ----
+        self.statusbar.showMessage(
+            f"启动: {'; '.join(_startup_log)}" if _startup_log
+            else "就绪（无数据，可添加交易或手动导入CSV账单）"
+        )
 
         # ---- 初始加载 ----
         self._refresh_months()
@@ -294,124 +187,62 @@ class MainWindow(QMainWindow):
 
     # ===================== 初始化辅助 =====================
 
-    def _setup_toolbar(self, toolbar):
-        """给工具栏添加月份选择控件（QComboBox + QPushButton）"""
-        toolbar.addWidget(QLabel("月份: "))
+    def _create_button_groups(self):
+        """创建 QButtonGroup（.ui 文件限制，必须在代码中创建）"""
+        # 预算规则按钮组
+        self.rule_group = QButtonGroup(self)
+        self.rule_group.addButton(self.radio_503020, 1)
+        self.rule_group.addButton(self.radio_fixed, 2)
+
+        # 储蓄方法按钮组
+        self.method_group = QButtonGroup(self)
+        self.method_group.addButton(self.radio_fixed_amount, 0)
+        self.method_group.addButton(self.radio_52w_inc, 1)
+        self.method_group.addButton(self.radio_52w_dec, 2)
+        self.method_group.addButton(self.radio_pct, 3)
+
+    def _setup_toolbar(self):
+        """给工具栏添加月份选择控件"""
+        self.toolbar_month.addWidget(QLabel("月份: "))
         self.month_combo = QComboBox()
         self.month_combo.setMinimumWidth(100)
         self.month_combo.currentTextChanged.connect(self._on_month_changed)
-        toolbar.addWidget(self.month_combo)
+        self.toolbar_month.addWidget(self.month_combo)
 
         btn_refresh = QPushButton("刷新月份")
         btn_refresh.clicked.connect(self._refresh_months)
-        toolbar.addWidget(btn_refresh)
-
-    def _gather_child_refs(self):
-        """获取所有需要操控的子控件引用"""
-        f = lambda cls, name: self.findChild(cls, name)
-
-        # Tab 1: 交易管理
-        self.txn_table = f(QTableWidget, "txn_table")
-        self.btn_add_txn = f(QPushButton, "btn_add_txn")
-        self.btn_import_csv = f(QPushButton, "btn_import_csv")
-        self.btn_delete_txn = f(QPushButton, "btn_delete_txn")
-
-        # Tab 2: 预算管理
-        self.budget_table = f(QTableWidget, "budget_table")
-        self.btn_add_budget = f(QPushButton, "btn_add_budget")
-        self.btn_delete_budget = f(QPushButton, "btn_delete_budget")
-        self.budget_summary_label = f(QLabel, "budget_summary_label")
-        self.income_edit = f(QLineEdit, "income_edit")
-        self.radio_503020 = f(QRadioButton, "radio_503020")
-        self.radio_fixed = f(QRadioButton, "radio_fixed")
-        # QButtonGroup 无法在 .ui 中定义(PySide6 QUiLoader限制), 在代码中创建
-        self.rule_group = QButtonGroup(self)
-        if self.radio_503020:
-            self.rule_group.addButton(self.radio_503020, 1)
-        if self.radio_fixed:
-            self.rule_group.addButton(self.radio_fixed, 2)
-        self.btn_apply_503020 = f(QPushButton, "btn_apply_503020")
-        self.btn_apply_fixed = f(QPushButton, "btn_apply_fixed")
-
-        # Tab 3: 诊断报告
-        self.diag_text = f(QTextEdit, "diag_text")
-        self.btn_run_diag = f(QPushButton, "btn_run_diag")
-
-        # Tab 4: 储蓄管理
-        self.target_edit = f(QLineEdit, "target_edit")
-        self.months_edit = f(QLineEdit, "months_edit")
-        self.btn_run_goal = f(QPushButton, "btn_run_goal")
-        self.goal_text = f(QTextEdit, "goal_text")
-        self.radio_fixed_amount = f(QRadioButton, "radio_fixed_amount")
-        self.radio_52w_inc = f(QRadioButton, "radio_52w_inc")
-        self.radio_52w_dec = f(QRadioButton, "radio_52w_dec")
-        self.radio_pct = f(QRadioButton, "radio_pct")
-        self.method_group = QButtonGroup(self)
-        if self.radio_fixed_amount:
-            self.method_group.addButton(self.radio_fixed_amount, 0)
-        if self.radio_52w_inc:
-            self.method_group.addButton(self.radio_52w_inc, 1)
-        if self.radio_52w_dec:
-            self.method_group.addButton(self.radio_52w_dec, 2)
-        if self.radio_pct:
-            self.method_group.addButton(self.radio_pct, 3)
-        self.method_param_edit = f(QLineEdit, "method_param_edit")
-        self.saving_income_edit = f(QLineEdit, "saving_income_edit")
-        self.btn_run_method = f(QPushButton, "btn_run_method")
-        self.method_desc_label = f(QLabel, "method_desc_label")
-        self.method_text = f(QTextEdit, "method_text")
-
-        # Tab 5: 预警消息
-        self.alert_text = f(QTextEdit, "alert_text")
-        self.btn_refresh_alert = f(QPushButton, "btn_refresh_alert")
-        self.btn_check_alert = f(QPushButton, "btn_check_alert")
-        self.btn_clear_alert = f(QPushButton, "btn_clear_alert")
+        self.toolbar_month.addWidget(btn_refresh)
 
     def _connect_signals(self):
         """连接所有信号/槽"""
         # -- 交易管理 --
-        if self.btn_add_txn:
-            self.btn_add_txn.clicked.connect(self._on_add_txn)
-        if self.btn_import_csv:
-            self.btn_import_csv.clicked.connect(self._on_import_csv)
-        if self.btn_delete_txn:
-            self.btn_delete_txn.clicked.connect(self._on_delete_txn)
+        self.btn_add_txn.clicked.connect(self._on_add_txn)
+        self.btn_import_csv.clicked.connect(self._on_import_csv)
+        self.btn_delete_txn.clicked.connect(self._on_delete_txn)
 
         # -- 预算管理 --
-        if self.budget_table:
-            self.budget_table.cellChanged.connect(self._on_budget_cell_changed)
-        if self.btn_add_budget:
-            self.btn_add_budget.clicked.connect(self._on_add_budget_row)
-        if self.btn_delete_budget:
-            self.btn_delete_budget.clicked.connect(self._on_delete_budget)
-        if self.btn_apply_503020:
-            self.btn_apply_503020.clicked.connect(lambda: self._apply_budget_rule("503020"))
-        if self.btn_apply_fixed:
-            self.btn_apply_fixed.clicked.connect(lambda: self._apply_budget_rule("fixed"))
+        self.budget_table.cellChanged.connect(self._on_budget_cell_changed)
+        self.btn_add_budget.clicked.connect(self._on_add_budget_row)
+        self.btn_delete_budget.clicked.connect(self._on_delete_budget)
+        self.btn_apply_503020.clicked.connect(lambda: self._apply_budget_rule("503020"))
+        self.btn_apply_fixed.clicked.connect(lambda: self._apply_budget_rule("fixed"))
 
         # -- 诊断报告 --
-        if self.btn_run_diag:
-            self.btn_run_diag.clicked.connect(lambda: self._run_diagnosis())
+        self.btn_run_diag.clicked.connect(lambda: self._run_diagnosis())
 
         # -- 储蓄管理 --
-        if self.btn_run_goal:
-            self.btn_run_goal.clicked.connect(self._run_goal)
-        if self.btn_run_method:
-            self.btn_run_method.clicked.connect(self._run_method)
+        self.btn_run_goal.clicked.connect(self._run_goal)
+        self.btn_run_method.clicked.connect(self._run_method)
         for rb in [self.radio_fixed_amount, self.radio_52w_inc,
                     self.radio_52w_dec, self.radio_pct]:
-            if rb:
-                rb.toggled.connect(
-                    lambda checked, _rb=rb: self._update_method_desc() if checked else None
-                )
+            rb.toggled.connect(
+                lambda checked, _rb=rb: self._update_method_desc() if checked else None
+            )
 
         # -- 预警消息 --
-        if self.btn_refresh_alert:
-            self.btn_refresh_alert.clicked.connect(self._refresh_alert)
-        if self.btn_check_alert:
-            self.btn_check_alert.clicked.connect(self._on_check_alert)
-        if self.btn_clear_alert:
-            self.btn_clear_alert.clicked.connect(self._on_clear_alert)
+        self.btn_refresh_alert.clicked.connect(self._refresh_alert)
+        self.btn_check_alert.clicked.connect(self._on_check_alert)
+        self.btn_clear_alert.clicked.connect(self._on_clear_alert)
 
         # 交易数据变更时刷新月份列表
         self.data_changed.connect(self._refresh_months)
@@ -436,13 +267,11 @@ class MainWindow(QMainWindow):
         if month:
             self._refresh_txn_table(month)
             self._refresh_budget_table(month)
-            self.statusBar().showMessage(f"当前月份: {month}")
+            self.statusbar.showMessage(f"当前月份: {month}")
 
     # ===================== Tab 1: 交易管理 =====================
 
     def _refresh_txn_table(self, month=None):
-        if self.txn_table is None:
-            return
         self.txn_table.setRowCount(0)
         txns = ctrl.get_transactions(month)
         self.txn_table.setRowCount(len(txns))
@@ -499,8 +328,6 @@ class MainWindow(QMainWindow):
     _budget_updating = False
 
     def _refresh_budget_table(self, month=None):
-        if self.budget_table is None:
-            return
         if month is None:
             month = self._get_current_month()
         ctrl.recalculate_budget_spent(month)
@@ -521,21 +348,20 @@ class MainWindow(QMainWindow):
         total_limit = sum(b.monthly_limit for b in budgets)
         total_spent = sum(b.current_spent for b in budgets)
         try:
-            income = float(self.income_edit.text().strip()) if self.income_edit else 0
+            income = float(self.income_edit.text().strip())
         except ValueError:
             income = 0.0
-        if self.budget_summary_label:
-            if income > 0:
-                surplus = income - total_limit
-                tag = f"余额: ¥{surplus:+.0f}（预算在收入范围内）" if surplus >= 0 \
-                    else f"!! 超额: ¥{surplus:+.0f} 预算已超月收入 !!"
-                self.budget_summary_label.setText(
-                    f"预算总额: ¥{total_limit:.0f}  |  月收入: ¥{income:.0f}  |  {tag}"
-                )
-            else:
-                self.budget_summary_label.setText(
-                    f"预算总额: ¥{total_limit:.0f}  |  已支出: ¥{total_spent:.0f}"
-                )
+        if income > 0:
+            surplus = income - total_limit
+            tag = f"余额: ¥{surplus:+.0f}（预算在收入范围内）" if surplus >= 0 \
+                else f"!! 超额: ¥{surplus:+.0f} 预算已超月收入 !!"
+            self.budget_summary_label.setText(
+                f"预算总额: ¥{total_limit:.0f}  |  月收入: ¥{income:.0f}  |  {tag}"
+            )
+        else:
+            self.budget_summary_label.setText(
+                f"预算总额: ¥{total_limit:.0f}  |  已支出: ¥{total_spent:.0f}"
+            )
 
     def _on_budget_cell_changed(self, row, col):
         if self._budget_updating or col != 1:
@@ -598,11 +424,19 @@ class MainWindow(QMainWindow):
             ctrl.set_budget_rule(Rule503020())
         else:
             rule = FixedBudgetRule()
-            for cat, lim in [("餐饮", 1200), ("交通", 200),
-                             ("学习", 300), ("数码电子", 200), ("个人护理", 150),
-                             ("家居日用", 300), ("运动户外", 200), ("服饰配饰", 150),
-                             ("医疗健康", 100), ("娱乐", 300), ("其他", 100)]:
-                rule.set_budget(cat, lim)
+            # 从表格读取用户当前设定的类别和限额
+            for row in range(self.budget_table.rowCount()):
+                cat_item = self.budget_table.item(row, 0)
+                limit_item = self.budget_table.item(row, 1)
+                if cat_item and limit_item:
+                    cat = cat_item.text().strip()
+                    if not cat or cat == "双击编辑类别":
+                        continue
+                    try:
+                        lim = float(limit_item.text().strip())
+                    except ValueError:
+                        continue
+                    rule.set_budget(cat, lim)
             ctrl.set_budget_rule(rule)
         try:
             result = ctrl.apply_budget_rule(income)
@@ -628,12 +462,10 @@ class MainWindow(QMainWindow):
     # ===================== Tab 3: 诊断报告 =====================
 
     def _run_diagnosis(self, month=None):
-        if self.diag_text is None:
-            return
         self.diag_text.clear()
         months = ctrl.get_months()
         if not months:
-            self.diag_text.append("(暂无交易数据，请先导入CSV或录入交易)")
+            self.diag_text.append("(暂无交易数据，请先录入交易或导入CSV账单)")
             return
 
         if month is None:
@@ -694,8 +526,6 @@ class MainWindow(QMainWindow):
     # ===================== Tab 4: 储蓄管理 =====================
 
     def _update_method_desc(self):
-        if self.method_group is None or self.method_desc_label is None:
-            return
         method_id = self.method_group.checkedId()
         try:
             param = float(self.method_param_edit.text().strip() or "0")
@@ -729,8 +559,6 @@ class MainWindow(QMainWindow):
             )
 
     def _run_goal(self):
-        if self.goal_text is None:
-            return
         self.goal_text.clear()
         try:
             target = float(self.target_edit.text().strip())
@@ -766,8 +594,6 @@ class MainWindow(QMainWindow):
         self.goal_text.append("=" * 55)
 
     def _run_method(self):
-        if self.method_text is None:
-            return
         self.method_text.clear()
         try:
             income = float(self.saving_income_edit.text().strip())
@@ -818,8 +644,6 @@ class MainWindow(QMainWindow):
     # ===================== Tab 5: 预警消息 =====================
 
     def _refresh_alert(self):
-        if self.alert_text is None:
-            return
         self.alert_text.clear()
         alerts = ctrl.get_alert_messages()
         if not alerts:

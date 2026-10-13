@@ -22,3 +22,14 @@ Thumbs.db
 
 # Environment
 .env
+
+# 运行时生成的数据文件（程序自己会写，不入库）
+transactions.json
+app_settings.json
+
+# 打包 / 归档产物
+*.zip
+
+# 中间产物
+_临时/
+_历史版本/
