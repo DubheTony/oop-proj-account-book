@@ -54,8 +54,8 @@ PySide6 6.5 以上。除此之外没有别的第三方依赖。
 ## 安装与运行
 
 ```bash
-git clone https://github.com/DubheTony/oop2-finance-tracker.git
-cd oop2-finance-tracker
+git clone https://github.com/DubheTony/oop-proj-account-book.git
+cd oop-proj-account-book
 
 python -m venv .venv
 .venv\Scripts\activate        # Windows
@@ -83,7 +83,7 @@ sample_data/支付宝交易明细_示例.csv
 ## 目录结构
 
 ```text
-oop2-finance-tracker/
+oop-proj-account-book/
 ├── main_gui.py                  # 程序入口，主窗口和四个页面的业务逻辑
 ├── main_gui.ui                  # Qt Designer 界面文件
 ├── add_transaction_dialog.ui
@@ -99,7 +99,6 @@ oop2-finance-tracker/
 ├── methods/                     # 储蓄方法族
 ├── sample_data/                 # 示例账单
 ├── docs/                        # 设计文档、接口文档、UML 图
-├── work_log.md                  # 早期开发记录
 ├── .github/workflows/           # PR 自动通过的 workflow
 └── .gitignore
 ```
