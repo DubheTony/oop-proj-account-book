@@ -70,7 +70,7 @@ python main_gui.py
 
 ### 试一试：导入示例账单
 
-`sample_data/` 下两个 CSV 的格式和真实导出一致，内容是程序生成的假数据：
+`sample_data/` 下两个 CSV 的格式和真实导出一致（可能支付宝导出为xlsx格式的，当时应该是另存为csv了），内容是程序生成的假数据：
 
 ```text
 sample_data/微信支付账单_示例.csv
