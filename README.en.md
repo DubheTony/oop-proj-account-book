@@ -6,6 +6,10 @@ A PySide6 desktop expense tracker built for an object-oriented programming cours
 
 The code is organized into several directories: `models/` holds data classes, `services/` holds business logic, and `strategies/`, `rules/`, and `methods/` each contain a family of strategies. Each family has an abstract base class and several implementations. `FinanceController` holds references to the base classes so implementations can be swapped without changing the calling code.
 
+## Screenshot
+
+![Transaction view with the included synthetic sample bills](screenshot.png)
+
 ## Features
 
 ### Transaction management
@@ -128,3 +132,7 @@ CSV imports tolerate individual row errors: a row that cannot be parsed is skipp
 ## Data
 
 The sample bills in the repository are generated and fictional; they contain no real personal information and are only for testing the import feature. Do not commit real bills to this repository.
+
+## License
+
+Original source code and documentation in this repository are under the [MIT License](LICENSE).
