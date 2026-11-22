@@ -94,7 +94,6 @@ oop-proj-account-book/
 ├── methods/                     # Savings method family
 ├── sample_data/                 # Sample bills
 ├── docs/                        # Design docs, interface docs, UML diagram
-├── .github/workflows/           # Workflow for automatically passing PR checks
 └── .gitignore
 ```
 

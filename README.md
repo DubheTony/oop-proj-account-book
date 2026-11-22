@@ -105,7 +105,6 @@ oop-proj-account-book/
 ├── methods/                     # 储蓄方法族
 ├── sample_data/                 # 示例账单
 ├── docs/                        # 设计文档、接口文档、UML 图
-├── .github/workflows/           # PR 自动通过的 workflow
 └── .gitignore
 ```
 
