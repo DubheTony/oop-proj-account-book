@@ -127,8 +127,6 @@ pyside6-uic set_budget_dialog.ui       -o ui_set_budget_dialog.py
 | [架构构思-CSV导入模块.md](docs/架构构思-CSV导入模块.md) | CSV 导入的格式适配设计 |
 | [功能说明.md](docs/功能说明.md) | 功能清单与实现范围 |
 | [项目描述.md](docs/项目描述.md) | 项目定位与几个差异点 |
-| [知识点梳理.md](docs/知识点梳理.md) | 项目涉及的面向对象知识点 |
-| [题目.md](docs/题目.md) | 课程布置的原始题目 |
 | [UML类图展示.html](docs/UML类图展示.html) | UML 类图，浏览器直接打开 |
 
 ## 几处实现上的取舍

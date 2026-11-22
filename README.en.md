@@ -116,8 +116,6 @@ pyside6-uic set_budget_dialog.ui       -o ui_set_budget_dialog.py
 | [架构构思-CSV导入模块.md](docs/架构构思-CSV导入模块.md) | CSV import format-adapter design |
 | [功能说明.md](docs/功能说明.md) | Feature list and implementation scope |
 | [项目描述.md](docs/项目描述.md) | Project purpose and distinguishing features |
-| [知识点梳理.md](docs/知识点梳理.md) | Object-oriented concepts used in the project |
-| [题目.md](docs/题目.md) | Original course assignment |
 | [UML类图展示.html](docs/UML类图展示.html) | UML diagram; open in a browser |
 
 ## Implementation choices
