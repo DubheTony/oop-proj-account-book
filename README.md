@@ -1,5 +1,7 @@
 # 桌面记账软件
 
+[中文](README.md) | [English](README.en.md)
+
 面向对象程序设计课程大作业，用 PySide6 写的一个桌面记账程序。能记收支、导入微信和
 支付宝的账单 CSV、做预算、生成消费诊断和储蓄计划。
 
@@ -134,11 +136,6 @@ pyside6-uic set_budget_dialog.ui       -o ui_set_budget_dialog.py
 商户名到类别的映射没写在代码里，放在 `services/category_rules.json`。加一条映射不用动 Python。
 
 CSV 导入按行容错：单行解析失败只跳该行并打印行号，不中断整个导入。
-
-## 关于 AI 辅助
-
-开发时用了 AI 编程助手（模型是 DeepSeek，通过 Claude Code 调用），主要做文档撰写、
-代码整理和仓库规范化。
 
 ## 关于数据
 
